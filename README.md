@@ -10,9 +10,9 @@
 [![tests](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml)
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="Demo: signing in, asking for revenue by brand with a chart and the SQL used, a follow-up question, a question in English, a sales forecast, and a store manager who only sees their own store" width="900">
+  <img src="docs/media/demo.gif" alt="Demo: the same assistant with three profiles. The group manager gets revenue by brand with a chart, the SQL and its plain-language explanation, rates the answer and sees suppliers; the brand manager only sees BurgerLab and gets no supplier data; the store manager only sees their own store; personal data (NIF) is refused for everyone" width="900">
 </p>
-<p align="center"><sub>Demo at 2× speed · <a href="docs/media/demo.mp4">full-quality video</a> · fictional data, demo accounts</sub></p>
+<p align="center"><sub>Demo at 2× speed · <a href="docs/media/demo.mp4">full-quality video</a> · three profiles, same questions, different answers (row-level security) · fictional data</sub></p>
 
 An AI assistant for a (fictional) Portuguese multi-brand restaurant group. Managers ask questions in **Portuguese, English, Spanish or French**, the assistant turns them into **SQL**, runs them on PostgreSQL with **row-level security**, and answers in plain language. It also **forecasts sales** with machine learning and suggests ingredient orders.
 

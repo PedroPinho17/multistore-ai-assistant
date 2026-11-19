@@ -10,9 +10,9 @@
 [![tests](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml)
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="Demonstração: login, faturação por marca com gráfico e o SQL usado, uma pergunta de seguimento, uma pergunta em inglês, uma previsão de vendas e um gerente de loja que só vê a sua loja" width="900">
+  <img src="docs/media/demo.gif" alt="Demonstração: o mesmo assistente com três perfis. O Imperador vê a faturação por marca com gráfico, o SQL e a sua explicação, avalia a resposta e vê os fornecedores; o gestor de marca só vê a BurgerLab e não tem dados de fornecedores; o gerente de loja só vê a sua loja; os dados pessoais (NIF) são recusados a todos" width="900">
 </p>
-<p align="center"><sub>Demonstração a 2× · <a href="docs/media/demo.mp4">vídeo em qualidade total</a> · dados fictícios, contas de demo</sub></p>
+<p align="center"><sub>Demonstração a 2× · <a href="docs/media/demo.mp4">vídeo em qualidade total</a> · três perfis, as mesmas perguntas, respostas diferentes (row-level security) · dados fictícios</sub></p>
 
 Um assistente de IA para um grupo português (fictício) de restauração com várias marcas. Os gestores fazem perguntas em **português, inglês, espanhol ou francês**, o assistente transforma-as em **SQL**, executa-as no PostgreSQL com **row-level security** e responde em linguagem simples. Também **prevê vendas** com machine learning e sugere encomendas de ingredientes.
 
