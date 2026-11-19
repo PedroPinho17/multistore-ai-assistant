@@ -1,4 +1,4 @@
-/* Gestão de contas (#/users), observabilidade (#/admin) e avaliação 👍/👎 das respostas.
+/* Gestão de contas (/users), observabilidade (/admin) e avaliação 👍/👎 das respostas.
  *
  * Carregado antes do script principal do index.html. Define:
  *   - ADMIN_TEXTS e installAdminTexts(TEXTS): textos destas páginas nas 4 línguas;

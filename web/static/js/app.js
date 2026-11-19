@@ -1,12 +1,14 @@
-/* Aplicação Vue: estado, router (#/…), API e ações. As páginas estão em pages/. */
+/* Aplicação Vue: estado, router (/…), API e ações. As páginas estão em pages/. */
 // Contas públicas de demonstração (as mesmas do README)
 const DEMO_ACCOUNTS = [
   { user: "pedro", pass: "imperador123", role: "imperador", icon: "crown" },
   { user: "gestor.burgerlab", pass: "marca123", role: "marca", icon: "tag" },
   { user: "gerente.maia", pass: "loja123", role: "loja", icon: "store" },
 ];
-const ROUTES = { "#/": "home", "#/login": "login", "#/chat": "chat", "#/profile": "profile",
-                 "#/users": "users", "#/admin": "admin", "#/settings": "settings", "#/review": "review" };
+// Páginas da UI: têm de coincidir com UI_PATHS em api/routes/pages.py (o servidor devolve a UI nestes caminhos)
+const ROUTES = { "/": "home", "/login": "login", "/chat": "chat", "/profile": "profile",
+                 "/users": "users", "/admin": "admin", "/settings": "settings", "/review": "review" };
+const PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
 const PRIVATE_VIEWS = ["chat", "profile", "users", "admin", "settings", "review"];
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const KIND_ORDER = ["sql", "forecast", "orders", "no_sql", "denied", "error"];
@@ -155,7 +157,8 @@ const RootApp = {
     } },
   },
   async mounted() {
-    window.addEventListener("hashchange", this.onRoute);
+    window.addEventListener("popstate", this.onRoute);
+    document.addEventListener("click", this.onLinkClick);
     document.addEventListener("click", () => (this.userMenu = false));
     document.addEventListener("keydown", e => { if (e.key === "Escape") this.userMenu = false; });
     setInterval(() => (this.clock = Date.now()), 30000);
@@ -197,23 +200,37 @@ const RootApp = {
     },
     dismissToast(id) { this.toasts = this.toasts.filter(x => x.id !== id); },
 
-    // ----- Router (#/, #/login, #/chat, #/profile) -----
+    // ----- Router (/, /login, /chat, /profile, …) com a History API -----
     go(view) {
-      const hash = view === "home" ? "#/" : "#/" + view;
-      if (location.hash === hash) this.onRoute(); else location.hash = hash;
+      const path = PATHS[view];
+      if (location.pathname !== path || location.hash) history.pushState(null, "", path);
+      this.onRoute();
+    },
+    // Links internos (<a href="/chat">) mudam de página sem recarregar
+    onLinkClick(e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest?.("a[href]");
+      if (!a || a.target || a.hasAttribute("download")) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || !(url.pathname in ROUTES)) return;
+      if (url.pathname === location.pathname && url.hash) return;      // âncora na mesma página (#features)
+      e.preventDefault();
+      this.go(ROUTES[url.pathname]);
     },
     onRoute() {
-      const h = location.hash;
-      if (h && !h.startsWith("#/")) return;               // âncoras da homepage (#features, ...)
-      let v = ROUTES[h] || (h === "" && this.token ? "chat" : "home");
+      // Links antigos (/#/chat) passam para o URL novo (/chat)
+      if (location.hash.startsWith("#/")) history.replaceState(null, "", location.hash.slice(1) || "/");
+      const path = location.pathname.replace(/\/+$/, "") || "/";
+      let v = ROUTES[path] || "home";
       if (!this.token && PRIVATE_VIEWS.includes(v)) v = "login";
       if (this.token && v === "login") v = "chat";
       if (v === "users" && !this.hasModule("users")) v = "chat";
       if (v === "admin" && !this.hasModule("observability")) v = "chat";
       if (v === "review" && !this.hasModule("teach")) v = "chat";
-      const want = v === "home" ? "#/" : "#/" + v;
-      if (location.hash !== want) history.replaceState(null, "", want);
+      if (location.pathname !== PATHS[v]) history.replaceState(null, "", PATHS[v] + (v === "home" ? location.hash : ""));
       const prev = this.view;
+      // Mesma página (âncora da homepage, link para a página atual): só fecha os menus
+      if (v === prev) { this.userMenu = false; this.sidebarOpen = false; return; }
       this.view = v;
       this.enterView(v, prev);
     },

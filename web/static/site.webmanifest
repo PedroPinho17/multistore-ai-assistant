@@ -2,7 +2,7 @@
   "name": "Multistore AI",
   "short_name": "Multistore",
   "description": "Assistente de dados para um grupo de restauração",
-  "start_url": "/#/chat",
+  "start_url": "/chat",
   "display": "standalone",
   "background_color": "#f6f7f5",
   "theme_color": "#0b6b4e",

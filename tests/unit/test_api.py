@@ -74,6 +74,31 @@ def test_index_has_security_headers():
     assert r.headers["cache-control"] == "no-cache"          # nova versão da UI aparece logo
 
 
+HTML = {"Accept": "text/html,application/xhtml+xml,*/*;q=0.8"}
+
+
+@pytest.mark.parametrize("path", ["/login", "/chat", "/profile", "/users", "/admin", "/settings", "/review", "/chat/"])
+def test_ui_pages_serve_the_app_to_the_browser(path):
+    """URLs limpos: abrir /chat (ou recarregar) no browser devolve a UI, com os mesmos cabeçalhos."""
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert '<div id="app"' in r.text
+    assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+    assert r.headers["cache-control"] == "no-cache"
+
+
+@pytest.mark.parametrize("path", ["/profile", "/users", "/review"])
+def test_api_get_with_same_path_still_returns_json(path):
+    """Os pedidos da UI levam token: /profile, /users e /review continuam a ser a API."""
+    r = client.get(path, headers={**HTML, "Authorization": "Bearer x"})
+    assert r.status_code == 401 and r.headers["content-type"].startswith("application/json")
+    assert client.get(path).status_code == 401          # sem Accept: text/html também é a API
+
+
+def test_unknown_path_is_not_the_app():
+    assert client.get("/nao-existe", headers=HTML).status_code == 404
+
+
 def test_api_responses_are_not_cached():
     assert client.get("/health").headers["cache-control"] == "no-store"
 

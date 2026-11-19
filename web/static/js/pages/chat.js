@@ -1,4 +1,4 @@
-/* Chat (#/chat): mensagens, gráficos, tabelas, fonte e caixa de escrita */
+/* Chat (/chat): mensagens, gráficos, tabelas, fonte e caixa de escrita */
 "use strict";
 
 const ChatPage = {

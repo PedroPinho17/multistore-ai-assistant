@@ -1,4 +1,4 @@
-/* Rever 👎 (#/review, módulo "teach": admin e Imperador).
+/* Rever 👎 (/review, módulo "teach": admin e Imperador).
  *
  * Define REVIEW_TEXTS + installReviewTexts(TEXTS) e ReviewMixin (estado e ações,
  * juntos à aplicação principal como os outros mixins). O template está em pages/review.js.

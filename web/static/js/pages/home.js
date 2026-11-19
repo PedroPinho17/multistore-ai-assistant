@@ -1,4 +1,4 @@
-/* Página inicial pública (#/) */
+/* Página inicial pública (/) */
 "use strict";
 
 const HomePage = {
@@ -6,7 +6,7 @@ const HomePage = {
   template: String.raw`
       <div class="home">
         <header class="topnav">
-          <a class="brand-link" href="#/"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><strong>Multistore AI</strong></a>
+          <a class="brand-link" href="/"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><strong>Multistore AI</strong></a>
           <nav class="topnav-links" :aria-label="t.h.nav">
             <a href="#features" @click.prevent="scrollToId('features')">{{ t.h.navFeatures }}</a>
             <a href="#how" @click.prevent="scrollToId('how')">{{ t.h.navHow }}</a>
@@ -15,7 +15,7 @@ const HomePage = {
           <div class="head-right">
             <button class="icon-btn icon-only" @click="toggleTheme" :title="t.theme" :aria-label="t.theme"><svg v-if="theme === 'dark'" class="i" aria-hidden="true"><use href="#i-sun"/></svg><svg v-else class="i" aria-hidden="true"><use href="#i-moon"/></svg></button>
             <lang-picker :model-value="lang" @update:model-value="setLang" :label="t.language" compact></lang-picker>
-            <a class="btn" :href="token ? '#/chat' : '#/login'">{{ token ? t.h.openChat : t.login }}</a>
+            <a class="btn" :href="token ? '/chat' : '/login'">{{ token ? t.h.openChat : t.login }}</a>
           </div>
         </header>
 
@@ -26,7 +26,7 @@ const HomePage = {
               <h1>{{ t.h.title }}</h1>
               <p class="lead">{{ t.h.lead }}</p>
               <div class="cta">
-                <a class="btn btn-lg" :href="token ? '#/chat' : '#/login'">{{ token ? t.h.openChat : (showDemo ? t.h.tryDemo : t.login) }} <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                <a class="btn btn-lg" :href="token ? '/chat' : '/login'">{{ token ? t.h.openChat : (showDemo ? t.h.tryDemo : t.login) }} <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
                 <a class="btn-ghost btn-lg" href="https://github.com/PedroPinho17/multistore-ai-assistant" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-github"/></svg> {{ t.h.github }}</a>
               </div>
               <ul class="proof">
@@ -146,7 +146,7 @@ const HomePage = {
               <p v-if="showDemo">{{ t.h.closingSub }}</p>
             </div>
             <div class="cta">
-              <a class="btn" :href="token ? '#/chat' : '#/login'">{{ token ? t.h.openChat : (showDemo ? t.h.tryDemo : t.login) }} <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+              <a class="btn" :href="token ? '/chat' : '/login'">{{ token ? t.h.openChat : (showDemo ? t.h.tryDemo : t.login) }} <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
               <a class="btn-ghost" href="https://github.com/PedroPinho17/multistore-ai-assistant" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-github"/></svg> {{ t.h.github }}</a>
             </div>
           </section>

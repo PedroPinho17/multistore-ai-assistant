@@ -1,4 +1,4 @@
-/* Página de Definições (#/settings): aparência e idioma da conta + definições da aplicação (admin).
+/* Página de Definições (/settings): aparência e idioma da conta + definições da aplicação (admin).
  *
  * As escolhas da conta são guardadas na BD (PUT /settings/me) e no browser, para
  * aparecerem logo ao abrir a página. As da aplicação (PUT /settings/app) são as

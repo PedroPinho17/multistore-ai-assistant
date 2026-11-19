@@ -26,7 +26,7 @@ from multistore_ai_assistant.api.routes import (
     settings,
     users,
 )
-from multistore_ai_assistant.api.routes.pages import WEB_DIR
+from multistore_ai_assistant.api.routes.pages import WEB_DIR, index_page, is_page_request
 from multistore_ai_assistant.db.pool import close_pools
 from multistore_ai_assistant.intent.predict import backend as intent_backend
 
@@ -82,6 +82,17 @@ CSP = (
 
 
 @app.middleware("http")
+async def ui_pages(request: Request, call_next):
+    """``/chat``, ``/login``, … abertos no browser devolvem a UI (o router Vue escolhe a página).
+
+    Fica registado antes de ``security_headers``, por isso a página também leva os cabeçalhos.
+    """
+    if is_page_request(request):
+        return index_page()
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def security_headers(request: Request, call_next):
     """Aplica cabeçalhos de segurança a todas as respostas HTTP."""
     response = await call_next(request)
@@ -91,7 +102,8 @@ async def security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     # API: nunca guardar em cache. Página e ficheiros estáticos: pode guardar, mas confirma sempre se mudou
-    static = request.url.path in ("/", "/favicon.ico") or request.url.path.startswith("/static/")
+    static = (request.url.path in ("/", "/favicon.ico") or request.url.path.startswith("/static/")
+              or is_page_request(request))
     response.headers["Cache-Control"] = "no-cache" if static else "no-store"
     return response
 

@@ -75,7 +75,7 @@ def main(argv: list[str]) -> int:
             conn.execute(
                 "INSERT INTO users (username, password_hash, role, protected) VALUES (%s, %s, 'admin', true)",
                 (username, hashed))
-            print(f"OK admin '{username}' criado. Entra em http://localhost:8001/#/login")
+            print(f"OK admin '{username}' criado. Entra em http://localhost:8001/login")
     return 0
 
 

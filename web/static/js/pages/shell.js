@@ -7,22 +7,22 @@ const AppShell = {
     <div class="shell">
       <aside class="rail" :class="{ open: sidebarOpen }" :aria-label="t.nav.main">
         <div class="rail-top">
-          <a href="#/" class="rail-brand" :title="t.h.home"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><span>Multistore AI</span></a>
+          <a href="/" class="rail-brand" :title="t.h.home"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><span>Multistore AI</span></a>
           <button type="button" class="icon-only rail-close" @click="sidebarOpen = false" :aria-label="t.nav.close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
         </div>
         <nav class="rail-nav" :aria-label="t.nav.main">
-          <a href="#/chat" class="nav-item" :class="{ active: view === 'chat' }" :aria-current="view === 'chat' ? 'page' : null">
+          <a href="/chat" class="nav-item" :class="{ active: view === 'chat' }" :aria-current="view === 'chat' ? 'page' : null">
             <svg class="i" aria-hidden="true"><use href="#i-chat"/></svg> <span>{{ t.nav.chat }}</span></a>
-          <a href="#/users" class="nav-item" :class="{ active: view === 'users' }" :aria-current="view === 'users' ? 'page' : null" v-if="hasModule('users')">
+          <a href="/users" class="nav-item" :class="{ active: view === 'users' }" :aria-current="view === 'users' ? 'page' : null" v-if="hasModule('users')">
             <svg class="i" aria-hidden="true"><use href="#i-users"/></svg> <span>{{ t.nav.users }}</span></a>
-          <a href="#/review" class="nav-item" :class="{ active: view === 'review' }" :aria-current="view === 'review' ? 'page' : null" v-if="hasModule('teach')">
+          <a href="/review" class="nav-item" :class="{ active: view === 'review' }" :aria-current="view === 'review' ? 'page' : null" v-if="hasModule('teach')">
             <svg class="i" aria-hidden="true"><use href="#i-teach"/></svg> <span>{{ t.nav.review }}</span>
             <span v-if="rv.pending" class="nav-count" :aria-label="t.rv.pending(rv.pending)">{{ rv.pending > 99 ? '99+' : rv.pending }}</span></a>
-          <a href="#/admin" class="nav-item" :class="{ active: view === 'admin' }" :aria-current="view === 'admin' ? 'page' : null" v-if="hasModule('observability')">
+          <a href="/admin" class="nav-item" :class="{ active: view === 'admin' }" :aria-current="view === 'admin' ? 'page' : null" v-if="hasModule('observability')">
             <svg class="i" aria-hidden="true"><use href="#i-chart"/></svg> <span>{{ t.nav.admin }}</span></a>
-          <a href="#/profile" class="nav-item" :class="{ active: view === 'profile' }" :aria-current="view === 'profile' ? 'page' : null">
+          <a href="/profile" class="nav-item" :class="{ active: view === 'profile' }" :aria-current="view === 'profile' ? 'page' : null">
             <svg class="i" aria-hidden="true"><use href="#i-user"/></svg> <span>{{ t.nav.profile }}</span></a>
-          <a href="#/settings" class="nav-item" :class="{ active: view === 'settings' }" :aria-current="view === 'settings' ? 'page' : null">
+          <a href="/settings" class="nav-item" :class="{ active: view === 'settings' }" :aria-current="view === 'settings' ? 'page' : null">
             <svg class="i" aria-hidden="true"><use href="#i-settings"/></svg> <span>{{ t.nav.settings }}</span></a>
         </nav>
 
@@ -59,8 +59,8 @@ const AppShell = {
                 <button type="button" :aria-pressed="theme === 'dark' ? 'true' : 'false'" @click="setTheme('dark')" :aria-label="t.p.dark" :title="t.p.dark"><svg class="i" aria-hidden="true"><use href="#i-moon"/></svg></button>
               </div>
             </div>
-            <a href="#/settings" role="menuitem" class="menu-item" @click="userMenu = false"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg> {{ t.nav.settings }}</a>
-            <a href="#/profile" role="menuitem" class="menu-item" @click="userMenu = false"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg> {{ t.nav.profile }}</a>
+            <a href="/settings" role="menuitem" class="menu-item" @click="userMenu = false"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg> {{ t.nav.settings }}</a>
+            <a href="/profile" role="menuitem" class="menu-item" @click="userMenu = false"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg> {{ t.nav.profile }}</a>
             <button type="button" role="menuitem" class="menu-item danger" @click="logout"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg> {{ t.logout }}</button>
           </div>
           <button type="button" class="user-btn" @click.stop="userMenu = !userMenu" aria-haspopup="menu"

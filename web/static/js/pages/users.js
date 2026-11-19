@@ -1,4 +1,4 @@
-/* Contas (#/users) */
+/* Contas (/users) */
 "use strict";
 
 const UsersPage = {

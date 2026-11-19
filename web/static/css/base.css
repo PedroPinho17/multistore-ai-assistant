@@ -35,7 +35,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .lang-select option { color: #111; }
 [v-cloak] { display: none; }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+/* top/left: sem eles o elemento fica na posição "estática" (p.ex. por baixo de todas as mensagens
+   do chat) e estica o documento, o que faz a página inteira deslocar-se */
+.sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
            clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ---------- Login ---------- */

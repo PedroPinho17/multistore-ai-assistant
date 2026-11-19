@@ -1,4 +1,4 @@
-/* Login (#/login) */
+/* Login (/login) */
 "use strict";
 
 const LoginPage = {
@@ -6,7 +6,7 @@ const LoginPage = {
   template: String.raw`
     <main class="auth">
       <div class="auth-box" :class="{ shake: shake }">
-        <a href="#/" class="auth-brand"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><strong>Multistore AI</strong></a>
+        <a href="/" class="auth-brand"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><strong>Multistore AI</strong></a>
         <form class="auth-form" @submit.prevent="login" novalidate>
           <h1>{{ t.l.welcome }}</h1>
           <p class="sub">{{ t.l.sub }}</p>
@@ -53,7 +53,7 @@ const LoginPage = {
         </div>
 
         <div class="auth-foot">
-          <a href="#/" class="back-link">← {{ t.h.back }}</a>
+          <a href="/" class="back-link">← {{ t.h.back }}</a>
           <div class="auth-tools">
             <lang-picker :model-value="lang" @update:model-value="setLang" :label="t.language" up></lang-picker>
             <button type="button" class="icon-btn icon-only" @click="toggleTheme" :aria-label="t.theme" :title="t.theme"><svg v-if="theme === 'dark'" class="i" aria-hidden="true"><use href="#i-sun"/></svg><svg v-else class="i" aria-hidden="true"><use href="#i-moon"/></svg></button>

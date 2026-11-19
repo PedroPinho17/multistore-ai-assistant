@@ -1,4 +1,4 @@
-/* Ensinar (#/review): rever 👎 (corrigir o SQL, testar, ensinar ou ignorar) e gerir os exemplos do RAG */
+/* Ensinar (/review): rever 👎 (corrigir o SQL, testar, ensinar ou ignorar) e gerir os exemplos do RAG */
 "use strict";
 
 const ReviewPage = {

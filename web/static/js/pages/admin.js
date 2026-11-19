@@ -1,4 +1,4 @@
-/* Observabilidade (#/admin, só admin) */
+/* Observabilidade (/admin, só admin) */
 "use strict";
 
 const AdminPage = {

@@ -1,4 +1,4 @@
-/* Perfil (#/profile) */
+/* Perfil (/profile) */
 "use strict";
 
 const ProfilePage = {
@@ -60,7 +60,7 @@ const ProfilePage = {
                   <span class="n">{{ k.n }}</span>
                 </div>
               </template>
-              <p v-else-if="profile" class="muted">{{ t.p.noActivity }} <a href="#/chat">{{ t.p.startChat }}</a></p>
+              <p v-else-if="profile" class="muted">{{ t.p.noActivity }} <a href="/chat">{{ t.p.startChat }}</a></p>
               <div v-else class="skeleton"></div>
             </section>
 

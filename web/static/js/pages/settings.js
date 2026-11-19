@@ -1,4 +1,4 @@
-/* Definições (#/settings) */
+/* Definições (/settings) */
 "use strict";
 
 const SettingsPage = {
@@ -37,7 +37,7 @@ const SettingsPage = {
                     <button type="button" class="btn sm" tabindex="-1">{{ t.st.previewBtn }}</button>
                     <span class="chip-role">{{ t.roles[user.role] }}</span>
                     <span class="bubble-demo">{{ t.st.previewMsg }}</span>
-                    <a href="#/settings" tabindex="-1" @click.prevent>{{ t.st.preview }}</a>
+                    <a href="/settings" tabindex="-1" @click.prevent>{{ t.st.preview }}</a>
                   </div>
                 </div>
                 <div class="set-row">
