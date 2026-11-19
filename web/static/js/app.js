@@ -599,21 +599,24 @@ const RootApp = {
         } else if (ev.type === "done") final = ev;
         else if (ev.type === "error") final = { error: ev.message };
       };
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let cut;
-        while ((cut = buffer.indexOf("\n\n")) >= 0) {
-          const line = buffer.slice(0, cut).trim(); buffer = buffer.slice(cut + 2);
-          if (line.startsWith("data:")) { try { handle(JSON.parse(line.slice(5))); } catch {} }
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let cut;
+          while ((cut = buffer.indexOf("\n\n")) >= 0) {
+            const line = buffer.slice(0, cut).trim(); buffer = buffer.slice(cut + 2);
+            if (line.startsWith("data:")) { try { handle(JSON.parse(line.slice(5))); } catch {} }
+          }
         }
-      }
+      } catch {}   // ligação cortada a meio: mostra a mensagem traduzida, não o "network error" do browser
       if (!final) final = { error: this.t.network };
       if (final.conversation_id) { this.currentConv = final.conversation_id; this.loadConversations(); }
       const fields = this.botFields(q, { ...(data || {}), ...final });
-      if (m) { Object.assign(m, fields); m.shown = m.text; }
+      if (m) Object.assign(m, fields);
       else m = this.addBot(fields);
+      m.shown = m.text;   // sem tokens (p.ex. erro antes da resposta) o texto também tem de aparecer
       return m;
     },
 

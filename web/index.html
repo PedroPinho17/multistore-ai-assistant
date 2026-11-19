@@ -98,7 +98,7 @@
 <div id="app" v-cloak style="height:100%">
   <home-page v-if="view === 'home'"></home-page>
   <login-page v-else-if="view === 'login'"></login-page>
-  <app-shell v-else></app-shell>
+  <app-shell v-else-if="view && user"></app-shell>
 
   <!-- Diálogo de confirmação (substitui a janela de confirmação do browser) -->
   <transition name="dlg">
