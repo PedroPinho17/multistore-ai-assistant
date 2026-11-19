@@ -1,0 +1,15 @@
+{
+  "name": "Multistore AI",
+  "short_name": "Multistore",
+  "description": "Assistente de dados para um grupo de restauração",
+  "start_url": "/#/chat",
+  "display": "standalone",
+  "background_color": "#f6f7f5",
+  "theme_color": "#0b6b4e",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

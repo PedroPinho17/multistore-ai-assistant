@@ -1,0 +1,23 @@
+# Lint e testes unitários em cada push / pull request (sem BD nem LLM: tudo simulado).
+# Os testes de integração saltam sozinhos quando não há Postgres.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.8"
+      - name: Instalar dependências
+        run: uv sync --locked
+      - name: Lint (ruff)
+        run: uv run ruff check src tests
+      - name: Testes unitários
+        run: uv run pytest tests/unit -q

@@ -1,0 +1,41 @@
+# Tudo com um comando:   docker compose up --build   (abre em http://localhost:APP_PORT)
+# Só a base de dados:     docker compose up -d db   (para correr a API com uv, fora do Docker)
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: multistore
+      # Lida do .env (o docker compose lê-o automaticamente)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: multistore
+    ports:
+      # Só acessível a partir deste computador, não da rede
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U multistore -d multistore"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Porta no teu computador: APP_PORT no .env (por defeito 8001).
+      # Dentro do contentor é sempre 8001.
+      - "127.0.0.1:${APP_PORT:-8001}:8001"
+    volumes:
+      # Modelos partilhados com o teu computador (usa o XLM-R se já o tiveres)
+      - ./models:/app/models
+      # Avaliação: perguntas e histórico de resultados (o painel admin lê eval/results)
+      - ./eval:/app/eval
+
+volumes:
+  pgdata:

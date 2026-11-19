@@ -1,0 +1,35 @@
+Classificador de intenção: MiniLM + LogisticRegression
+Avaliação: StratifiedGroupKFold (5 folds, split por template), 690 frases
+
+               precision    recall  f1-score   support
+
+         data      0.992     0.948     0.970       404
+     forecast      0.949     0.966     0.957        58
+       orders      0.833     0.948     0.887        58
+         chat      0.933     1.000     0.966        28
+personal_data      0.883     0.946     0.914        56
+        write      0.904     0.940     0.922        50
+    off_topic      0.838     0.861     0.849        36
+
+     accuracy                          0.946       690
+    macro avg      0.905     0.944     0.923       690
+ weighted avg      0.950     0.946     0.947       690
+
+Matriz de confusão (linhas = real, colunas = previsto):
+                   data forecast   orders     chat personal    write off_topi
+data                383        3        8        0        4        3        3
+forecast              0       56        0        0        0        0        2
+orders                2        0       55        1        0        0        0
+chat                  0        0        0       28        0        0        0
+personal_data         1        0        0        1       53        0        1
+write                 0        0        2        0        1       47        0
+off_topic             0        0        1        0        2        2       31
+
+Limiar | decididas pelo classificador | accuracy nessas
+  0.50 |  95.5% |  97.6%
+  0.55 |  93.6% |  98.6%
+  0.60 |  92.5% |  99.1%
+  0.65 |  91.2% |  99.4%
+  0.70 |  88.8% |  99.5%
+  0.75 |  86.1% |  99.7%
+  0.80 |  81.7% |  99.8%

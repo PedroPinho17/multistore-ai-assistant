@@ -1,0 +1,91 @@
+[project]
+name = "multistore-ai-assistant"
+version = "0.1.0"
+description = "AI data assistant for a multi-brand restaurant group: text-to-SQL in PT/EN/ES/FR with PostgreSQL row-level security, RAG and sales forecasting"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Pedro Pinho", email = "pedropinho364@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "bcrypt>=5.0.0",
+    "faker>=40.54.0",
+    "fastapi>=0.163.1",
+    "holidays>=0.109",
+    "joblib>=1.6.0",
+    "openai>=3.52.0",
+    "pandas>=3.1.1",
+    "psycopg-pool>=3.2.6",
+    "psycopg[binary]>=3.3.9",
+    "pyjwt>=2.15.1",
+    "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "sentence-transformers>=6.3.0",
+    "sqlglot>=30.33.0",
+    "torch>=2.15.0",
+    "transformers>=5.23.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+multistore-ai-assistant = "multistore_ai_assistant:main"
+
+[build-system]
+requires = ["uv_build>=0.13.8,<0.14.0"]
+build-backend = "uv_build"
+
+# No Linux (imagem Docker) o torch vem do índice CPU: evita ~3 GB de bibliotecas CUDA.
+# No Windows e no macOS o torch do PyPI já é a versão CPU.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: precisa da base de dados a correr (docker compose up -d)",
+    "model: precisa dos modelos treinados em models/",
+]
+filterwarnings = ["ignore::DeprecationWarning:sentence_transformers.*", "ignore::FutureWarning"]
+
+[tool.coverage.run]
+source = ["multistore_ai_assistant"]
+# Scripts offline (gerar dados, treinar, avaliar): não correm na aplicação
+omit = [
+    "*/finetune/*", "*/data/*", "*/evaluate.py",
+    "*/intent/train.py", "*/intent/export.py", "*/intent/dataset.py", "*/forecast/train.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ['if __name__ == "__main__":', 'def main()']
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, imports ordenados, sintaxe moderna, bugbear, simplificações
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF100"]
+# B008: Depends(...) nos argumentos é o padrão do FastAPI. E501: o limite fica para o formatador.
+ignore = ["B008", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["multistore_ai_assistant", "tests"]

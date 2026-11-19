@@ -1,0 +1,45 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Segredos e modelos
+.env
+models/
+
+# Segredos extra
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Artefactos de modelos grandes
+*.zip
+*.joblib
+*.safetensors
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Backups da base de dados (dados e hashes de passwords)
+backup/
+*.dump
+
+# Notas pessoais (contas de teste)
+Contas-teste.txt
+COMO_CORRER.txt
+COMO_CORRER_EM_CASA.txt

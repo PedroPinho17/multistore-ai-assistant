@@ -1,0 +1,6 @@
+date,model,runs,level,questions,accuracy,always_ok,easy,medium,hard,refusal,duration_s,commit,source
+2026-11-18T08:49:00,openai/gpt-oss-120b,1,all,40,0.975,0.975,1.0,1.0,0.9,1.0,0,,imported (eval/groq_run1.txt)
+2026-11-18T08:56:00,openai/gpt-oss-120b,3,hard,10,1.0,1.0,,,1.0,,0,,imported (eval/groq_hard3.txt)
+2026-11-18T12:11:00,Qwen2.5-Coder-1.5B (base),1,all,40,0.25,0.25,0.5,0.2,0.1,0.2,0,,imported (eval/qwen_scores.txt)
+2026-11-18T12:12:00,Qwen2.5-Coder-1.5B + LoRA,1,all,40,0.45,0.45,0.5,0.4667,0.1,1.0,0,,imported (eval/qwen_scores.txt)
+2026-11-18T13:43:00,Qwen2.5-Coder-7B + LoRA,1,all,40,0.675,0.675,0.9,0.6,0.4,1.0,0,,imported (eval/qwen_scores.txt)

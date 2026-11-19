@@ -1,0 +1,38 @@
+Classificador de intenção: XLM-RoBERTa base (fine-tune)
+Avaliação: StratifiedGroupKFold (5 folds, split por template), 690 frases
+
+               precision    recall  f1-score   support
+
+         data      1.000     0.993     0.996       404
+     forecast      0.967     1.000     0.983        58
+       orders      0.982     0.966     0.974        58
+         chat      1.000     0.929     0.963        28
+personal_data      0.949     1.000     0.974        56
+        write      0.962     1.000     0.980        50
+    off_topic      0.943     0.917     0.930        36
+
+     accuracy                          0.986       690
+    macro avg      0.972     0.972     0.971       690
+ weighted avg      0.986     0.986     0.985       690
+
+Matriz de confusão (linhas = real, colunas = previsto):
+               data  forecast  orders  chat  personal  write  off_topi
+data            401         0       1     0         1      1         0
+forecast          0        58       0     0         0      0         0
+orders            0         2      56     0         0      0         0
+chat              0         0       0    26         0      0         2
+personal_data     0         0       0     0        56      0         0
+write             0         0       0     0         0     50         0
+off_topic         0         0       0     0         2      1        33
+
+Limiar | decididas pelo classificador | accuracy nessas
+  0.50 |  99.9% |  98.7%
+  0.55 |  99.6% |  98.8%
+  0.60 |  99.6% |  98.8%
+  0.65 |  99.6% |  98.8%
+  0.70 |  99.6% |  98.8%
+  0.75 |  99.4% |  99.0%
+  0.80 |  99.4% |  99.0%
+  0.90 |  99.3% |  99.1%
+
+Latência em CPU: 59 ms por pergunta
