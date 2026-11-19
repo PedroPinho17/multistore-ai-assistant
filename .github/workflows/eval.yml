@@ -55,7 +55,17 @@ jobs:
           docker compose logs app; exit 1
 
       - name: Avaliar
-        run: docker compose exec -T app python -m multistore_ai_assistant.evaluate "${{ inputs.runs }}" ${{ inputs.level }}
+        env:
+          RUNS: ${{ inputs.runs }}
+          LEVEL: ${{ inputs.level }}
+        # "docker compose exec" abre um processo novo, sem a troca localhost:5433 -> db:5432
+        # que o entrypoint faz para a API: aplica-se aqui a mesma troca.
+        run: |
+          docker compose exec -T -e RUNS="$RUNS" -e LEVEL="$LEVEL" app sh -c '
+            to_docker_host() { echo "$1" | sed -E "s#@[^/@]+/#@db:5432/#"; }
+            export DATABASE_URL="$(to_docker_host "$DATABASE_URL")"
+            export READONLY_DATABASE_URL="$(to_docker_host "$READONLY_DATABASE_URL")"
+            exec python -m multistore_ai_assistant.evaluate "$RUNS" $LEVEL'
 
       - name: Resumo
         if: always()
