@@ -11,7 +11,7 @@
 
 Um assistente de IA para um grupo português (fictício) de restauração com várias marcas. Os gestores fazem perguntas em **português, inglês, espanhol ou francês**, o assistente transforma-as em **SQL**, executa-as no PostgreSQL com **row-level security** e responde em linguagem simples. Também **prevê vendas** com machine learning e sugere encomendas de ingredientes.
 
-> Todos os dados são fictícios (gerados com Faker `pt_PT`). A ideia vem do meu projeto final de licenciatura, um assistente de IA desenvolvido durante o estágio ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); esta é uma versão nova, open source, escrita de raiz.
+> Todos os dados são fictícios (gerados com Faker `pt_PT`). A ideia vem do meu projeto final de licenciatura, um assistente de IA desenvolvido durante o estágio ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); esta é uma versão nova, escrita de raiz.
 
 **O grupo:** 3 marcas, **BurgerLab** (hambúrgueres), **Café Aroma** (café) e **Gelato Mar** (gelados), com 15 lojas e armazéns, funcionários e turnos, produtos, menus, receitas e ingredientes, stock, compras, transferências e vendas desde janeiro de 2025 **até ontem**: o histórico até 16 de novembro de 2026 é sempre igual (seed fixa) e o `generate_activity --extend` acrescenta os dias em falta, para que perguntas como *"este mês"* nunca venham vazias (a app em Docker faz isto em cada arranque).
 
@@ -414,4 +414,4 @@ Pedro Pinho · [GitHub](https://github.com/PedroPinho17)
 
 ## Licença
 
-[MIT](LICENSE)
+Projeto Multistore AI Assistant. Este repositório não inclui uma licença de reutilização.

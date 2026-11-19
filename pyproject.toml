@@ -3,7 +3,6 @@ name = "multistore-ai-assistant"
 version = "0.1.0"
 description = "AI data assistant for a multi-brand restaurant group: text-to-SQL in PT/EN/ES/FR with PostgreSQL row-level security, RAG and sales forecasting"
 readme = "README.md"
-license = "MIT"
 authors = [
     { name = "Pedro Pinho", email = "pedropinho364@gmail.com" }
 ]

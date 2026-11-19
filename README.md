@@ -11,7 +11,7 @@
 
 An AI assistant for a (fictional) Portuguese multi-brand restaurant group. Managers ask questions in **Portuguese, English, Spanish or French**, the assistant turns them into **SQL**, runs them on PostgreSQL with **row-level security**, and answers in plain language. It also **forecasts sales** with machine learning and suggests ingredient orders.
 
-> All data is fictional (generated with Faker `pt_PT`). The idea comes from my BSc final project, an AI assistant built during my internship ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); this is a new, open-source version written from scratch.
+> All data is fictional (generated with Faker `pt_PT`). The idea comes from my BSc final project, an AI assistant built during my internship ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); this is a new version written from scratch.
 
 **The group:** 3 brands, **BurgerLab** (burgers), **Café Aroma** (café) and **Gelato Mar** (ice cream), with 15 stores and warehouses, employees and shifts, products, menus, recipes and ingredients, stock, purchases, transfers and sales from Jan 2025 **until yesterday**: the history up to 16 Nov 2026 is always the same (fixed seed), and `generate_activity --extend` adds the missing days, so questions like *"this month"* never come back empty (the Docker app does it on every start).
 
@@ -414,4 +414,4 @@ Pedro Pinho · [GitHub](https://github.com/PedroPinho17)
 
 ## License
 
-[MIT](LICENSE)
+Multistore AI Assistant project. This repository does not include a licence for reuse.
