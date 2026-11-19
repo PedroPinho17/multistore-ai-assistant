@@ -9,6 +9,11 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 [![tests](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml)
 
+<p align="center">
+  <img src="docs/media/demo.gif" alt="Demo: signing in, asking for revenue by brand with a chart and the SQL used, a follow-up question, a question in English, a sales forecast, and a store manager who only sees their own store" width="900">
+</p>
+<p align="center"><sub>Demo at 2× speed · <a href="docs/media/demo.mp4">full-quality video</a> · fictional data, demo accounts</sub></p>
+
 An AI assistant for a (fictional) Portuguese multi-brand restaurant group. Managers ask questions in **Portuguese, English, Spanish or French**, the assistant turns them into **SQL**, runs them on PostgreSQL with **row-level security**, and answers in plain language. It also **forecasts sales** with machine learning and suggests ingredient orders.
 
 > All data is fictional (generated with Faker `pt_PT`). The idea comes from my BSc final project, an AI assistant built during my internship ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); this is a new version written from scratch.
@@ -233,6 +238,7 @@ Dockerfile             app image; docker/entrypoint.sh prepares DB and models on
 docker-compose.yml     db (Postgres + pgvector) and app
 docs/ARCHITECTURE.md   design decisions, request flow, security summary, known limits
 docs/screenshots/      images used in this README
+docs/media/            demo video (GIF + MP4)
 .github/workflows/     tests (every push) and eval (manual, full stack + Groq)
 docs/*.pdf             project guide (EN and PT)
 eval/                  questions, results/ (one JSON per run) and history.csv

@@ -9,6 +9,11 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 [![tests](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/PedroPinho17/multistore-ai-assistant/actions/workflows/tests.yml)
 
+<p align="center">
+  <img src="docs/media/demo.gif" alt="Demonstração: login, faturação por marca com gráfico e o SQL usado, uma pergunta de seguimento, uma pergunta em inglês, uma previsão de vendas e um gerente de loja que só vê a sua loja" width="900">
+</p>
+<p align="center"><sub>Demonstração a 2× · <a href="docs/media/demo.mp4">vídeo em qualidade total</a> · dados fictícios, contas de demo</sub></p>
+
 Um assistente de IA para um grupo português (fictício) de restauração com várias marcas. Os gestores fazem perguntas em **português, inglês, espanhol ou francês**, o assistente transforma-as em **SQL**, executa-as no PostgreSQL com **row-level security** e responde em linguagem simples. Também **prevê vendas** com machine learning e sugere encomendas de ingredientes.
 
 > Todos os dados são fictícios (gerados com Faker `pt_PT`). A ideia vem do meu projeto final de licenciatura, um assistente de IA desenvolvido durante o estágio ([Projeto Final](https://github.com/PedroPinho17/PF_2024_2025)); esta é uma versão nova, escrita de raiz.
@@ -234,6 +239,7 @@ docker-compose.yml     db (Postgres + pgvector) e app
 docs/ARCHITECTURE.md   decisões de desenho, percurso dos pedidos, resumo de segurança, limites conhecidos
 docs/*.pdf             guia do projeto (EN e PT)
 docs/screenshots/      imagens usadas neste README
+docs/media/            vídeo de demonstração (GIF + MP4)
 .github/workflows/     testes (em cada push) e avaliação (manual, stack completa + Groq)
 eval/                  perguntas, results/ (um JSON por execução) e history.csv
 notebooks/             notebooks do Kaggle: fine-tuning de SQL com Qwen, classificador de intenção XLM-RoBERTa
