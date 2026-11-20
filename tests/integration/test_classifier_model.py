@@ -35,7 +35,7 @@ def test_clear_questions(question, intent):
 def test_follow_ups_reach_the_llm_with_history(monkeypatch, follow_up):
     """Regressão: estas perguntas eram recusadas ou respondidas sem dados a meio de uma conversa."""
     seen = []
-    monkeypatch.setattr(ask_mod, "generate_sql", lambda q, h=None: seen.append(h) or "SELECT 1")
+    monkeypatch.setattr(ask_mod, "generate_sql", lambda q, h=None, failed=None: seen.append(h) or "SELECT 1")
     monkeypatch.setattr(ask_mod, "run_query", lambda sql, user: (["x"], [(1,)]))
     monkeypatch.setattr(ask_mod, "answer", lambda *a, **k: "ok")
     monkeypatch.setattr(ask_mod, "chat_reply", lambda *a, **k: pytest.fail("foi para a conversa sem contexto"))

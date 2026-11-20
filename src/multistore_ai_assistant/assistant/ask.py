@@ -4,7 +4,9 @@ Fluxo principal:
 1. Classificador local (ou LLM se confiança baixa / follow-up ambíguo).
 2. Recusas e chat sem ir à BD; forecast/orders via modelos ML.
 3. Caso contrário: gera SQL, valida com sqlglot, corre com RLS, resume com LLM.
-4. Se a query falhar, tenta uma vez a corrigir com o erro no prompt.
+4. Se a query falhar (validador ou BD), o LLM recebe o SQL e o erro e corrige uma vez.
+5. Se um filtro ``ILIKE 'texto'`` sem ``%`` não devolver nada, corre outra vez com
+   ``'%texto%'`` (sem LLM).
 
 Antes de gerar SQL, a cache de SQL (``assistant.cache``) procura uma pergunta
 que pede os mesmos dados, feita hoje no mesmo perfil; se existir, reaproveita o SQL (que corre
@@ -30,7 +32,7 @@ from multistore_ai_assistant.assistant.answer import answer, chat_reply
 from multistore_ai_assistant.assistant.cache import lookup as cache_lookup
 from multistore_ai_assistant.assistant.cache import store as cache_store
 from multistore_ai_assistant.assistant.sql_generator import generate_sql
-from multistore_ai_assistant.assistant.sql_validator import InvalidSQL, validate_sql
+from multistore_ai_assistant.assistant.sql_validator import InvalidSQL, validate_sql, widen_ilike
 from multistore_ai_assistant.db.query import IMPERADOR, run_query
 from multistore_ai_assistant.forecast.service import forecast_answer, orders_answer
 from multistore_ai_assistant.intent.predict import classify
@@ -161,12 +163,38 @@ def _ml_answer(kind: str, question: str, user: dict, lang: str, on_event=None) -
             "answer": answer(f"{question}\n{ML_NOTE}", columns, rows, lang, on_token=_tokens(on_event))}
 
 
+def _no_data(rows) -> bool:
+    """0 linhas, ou só NULLs (``SUM`` de um filtro que não apanhou nada dá uma linha NULL)."""
+    return all(v is None for row in rows for v in row)
+
+
+def _widened(sql: str, user: dict):
+    """Filtro por nome sem ``%`` que não deu nada: tenta uma vez com ``'%texto%'``.
+
+    Devolve ``(sql, colunas, linhas)`` se a versão alargada encontrou dados, senão ``None``
+    (fica o resultado original). Não chama o LLM: só reescreve os ``ILIKE``.
+    """
+    wider = widen_ilike(sql)
+    if not wider:
+        return None
+    try:
+        wider = validate_sql(wider)
+        columns, rows = run_query(wider, user)
+    except (InvalidSQL, psycopg.Error) as e:
+        log.warning("ILIKE alargado falhou, fica o resultado original: %s | SQL: %s", e, wider)
+        return None
+    log.info("0 linhas com ILIKE sem %%; alargado: %s linha(s) | SQL: %s", len(rows), wider)
+    return None if _no_data(rows) else (wider, columns, rows)
+
+
 def _sql_answer(sql: str, question: str, user: dict, lang: str, on_event) -> dict:
     """Valida, corre com RLS e resume. Levanta InvalidSQL / psycopg.Error se falhar."""
     sql = validate_sql(sql)
     _emit(on_event, "status", step="query")
     columns, rows = run_query(sql, user)
     record_sql_attempt()
+    if _no_data(rows) and (found := _widened(sql, user)):
+        sql, columns, rows = found
     _emit(on_event, "data", kind="sql", sql=sql, columns=columns, rows=rows)
     _emit(on_event, "status", step="answer")
     text = answer(question, columns, rows, lang, on_token=_tokens(on_event))
@@ -229,11 +257,12 @@ def ask(
             except (InvalidSQL, psycopg.Error) as e:      # p.ex. o esquema mudou: segue o caminho normal
                 log.warning("SQL da cache falhou, a gerar de novo: %s", e)
 
-    # Text-to-SQL com até MAX_ATTEMPTS tentativas (a 2.ª inclui o erro no prompt)
-    prompt = question
+    # Text-to-SQL com até MAX_ATTEMPTS tentativas: se o validador ou a BD recusarem o SQL,
+    # o LLM recebe o SQL e o erro e corrige uma vez (e a correção é validada outra vez)
+    failed = None
     for attempt in range(MAX_ATTEMPTS):
         _emit(on_event, "status", step="sql")
-        sql = generate_sql(prompt, history)
+        sql = generate_sql(question, history, failed=failed)
         if sql in ("FORECAST", "ORDERS"):
             return _ml_answer(sql.lower(), question, user, lang, on_event)
         if sql.strip() == "NO_SQL":
@@ -249,14 +278,14 @@ def ask(
         except (InvalidSQL, psycopg.Error) as e:
             record_sql_attempt(e)
             if attempt == MAX_ATTEMPTS - 1:
-                log.warning("Pergunta falhou: %r | SQL: %s | Erro: %s", question, sql, e)
+                log.warning("Pergunta falhou depois da correção: %r | SQL: %s | Erro: %s", question, sql, e)
                 return {
                     "sql": None, "kind": "error",
                     "error": ERROR_MESSAGES.get(lang, ERROR_MESSAGES["pt"]),
                 }
-            prompt = (
-                f"{question}\n\nThe previous query failed:\n{sql}\nError: {e}\nFix it."
-            )
+            log.warning("SQL falhou (%s), a pedir uma correção ao LLM: %r | SQL: %s | Erro: %s",
+                        type(e).__name__, question, sql, e)
+            failed = (sql, str(e))
 
 
 if __name__ == "__main__":

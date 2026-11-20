@@ -33,7 +33,7 @@ BUSINESS_NOTES = """
 - Total margin of sales = sum(sale_lines.quantity * (sale_lines.unit_price - unit_cost)), joining product_margins on product_id or menu_margins on menu_id.
 - For price recommendations, which products to promote or remove, use the view price_recommendations (classification: estrela, burro de carga, enigma, cão; recommendation text; last 90 days, compared within each brand).
 - When the user says MB Way or MBWay, the payment_method value is 'mbway'.
-- When filtering by a name (product, ingredient, store, brand), use ILIKE so case does not matter.
+- Store names are "<brand> <city>" (e.g. 'BurgerLab Maia', 'Café Aroma Porto'); users usually say only part of them.
 - Row-level security already limits every query to the user's own scope (their brand or their store). "My brand", "my store",
   "minha marca", "minha loja", "mi tienda", "ma marque" mean that scope: do NOT filter by a brand or store name for them,
   and never use placeholders or bind parameters (:marca, %(x)s, $1). Just query the tables.
@@ -57,7 +57,13 @@ Rules:
 - Use readable Portuguese column aliases with AS (e.g. AS faturacao).
 - Round euro amounts to 2 decimal places.
 - Unless the question asks for everything, limit to 100 rows.
-- When filtering by a name (product, ingredient, store, brand), use ILIKE so case does not matter.
+- When filtering by a name (store, brand, product, ingredient), use ILIKE with % on both sides, so case
+  and partial names still match: st.name ILIKE '%Maia%', never st.name = 'Maia' or st.name ILIKE 'Maia'.
+  Example:
+  Q: Quanto queijo cheddar há na loja de Coimbra?
+  SQL: SELECT st.name AS loja, i.name AS ingrediente, s.quantity AS quantidade, i.unit AS unidade
+       FROM stock s JOIN stores st ON st.id = s.store_id JOIN ingredients i ON i.id = s.ingredient_id
+       WHERE st.name ILIKE '%Coimbra%' AND i.name ILIKE '%cheddar%'
 - If the user asks for a FUTURE sales/revenue forecast (next days, next week, "how much will I sell"), reply exactly: FORECAST
 - If the user asks which ingredients to order, buy or restock, reply exactly: ORDERS
 - If the user asks for personal employee data (NIF, NISS, address, birth date, phone, email), reply exactly: NO_SQL
@@ -67,12 +73,23 @@ Rules:
 """
 
 
-def generate_sql(question: str, history: list[tuple[str, str]] | None = None) -> str:
-    """Pede ao LLM um SELECT (ou FORECAST / ORDERS / NO_SQL).
+FIX_PROMPT = """That query failed with this error:
+{error}
+
+Reply with a corrected query for the same question (SQL only), or with one of the special replies if that fits better."""
+MAX_ERROR_CHARS = 500       # o erro do Postgres vai para o prompt: limita o tamanho
+
+
+def generate_sql(question: str, history: list[tuple[str, str]] | None = None,
+                 failed: tuple[str, str] | None = None) -> str:
+    """Pede ao LLM um SELECT (ou FORECAST / ORDERS / NO_SQL), sempre com ``temperature=0``.
 
     Args:
-        question: Pergunta actual (ou prompt de retry com o erro da query).
+        question: Pergunta actual.
         history: Trocas anteriores ``(pergunta, SQL|etiqueta)`` para follow-ups.
+        failed: ``(sql, erro)`` de uma tentativa que falhou: o SQL volta como a resposta
+            anterior do modelo e o erro como pedido de correção. Os exemplos RAG continuam
+            a ser procurados pela pergunta (não pelo texto do erro).
 
     Returns:
         SQL sem fences Markdown, ou uma das etiquetas especiais.
@@ -90,6 +107,10 @@ def generate_sql(question: str, history: list[tuple[str, str]] | None = None) ->
         messages.append({"role": "user", "content": q})
         messages.append({"role": "assistant", "content": s})
     messages.append({"role": "user", "content": question})
+    if failed:
+        failed_sql, error = failed
+        messages.append({"role": "assistant", "content": failed_sql})
+        messages.append({"role": "user", "content": FIX_PROMPT.format(error=str(error)[:MAX_ERROR_CHARS])})
     response = client.chat.completions.create(model=MODEL, messages=messages, temperature=0)
     record_llm(response)
     text = response.choices[0].message.content or ""

@@ -62,6 +62,43 @@ def test_generate_sql_sends_history_as_turns(llm):
                      ("user", "E no Porto?")]
 
 
+def test_correction_sends_the_failed_sql_and_the_error_as_turns(llm, monkeypatch):
+    client = llm("SELECT total FROM sales")
+    searched = []
+    monkeypatch.setattr(sql_generator, "find_similar", lambda q: searched.append(q) or [])
+    history = [("Vendas em outubro?", "SELECT 1")]
+    sql_generator.generate_sql("E em setembro?", history,
+                               failed=("SELECT x FROM sales", 'column "x" does not exist'))
+    sent = client.sent[0]
+    roles = [(m["role"], m["content"]) for m in sent["messages"][1:]]
+    assert roles[:4] == [("user", "Vendas em outubro?"), ("assistant", "SELECT 1"),
+                         ("user", "E em setembro?"), ("assistant", "SELECT x FROM sales")]
+    assert roles[4][0] == "user" and 'column "x" does not exist' in roles[4][1]
+    assert searched == ["E em setembro?"]                     # RAG pela pergunta, não pelo erro
+    assert sent["temperature"] == 0                            # a correção também é determinística
+
+
+def test_correction_error_is_truncated(llm):
+    client = llm()
+    sql_generator.generate_sql("q", failed=("SELECT 1", "x" * 5000))
+    fix = client.sent[0]["messages"][-1]["content"]
+    assert "x" * sql_generator.MAX_ERROR_CHARS in fix and "x" * (sql_generator.MAX_ERROR_CHARS + 1) not in fix
+
+
+def test_without_a_failure_there_is_no_correction_turn(llm):
+    client = llm()
+    sql_generator.generate_sql("q")
+    assert [m["role"] for m in client.sent[0]["messages"]] == ["system", "user"]
+
+
+def test_prompt_asks_for_ilike_with_wildcards_and_shows_an_example(llm):
+    client = llm()
+    sql_generator.generate_sql("q")
+    system = client.sent[0]["messages"][0]["content"]
+    assert "ILIKE with % on both sides" in system
+    assert "st.name ILIKE '%Coimbra%' AND i.name ILIKE '%cheddar%'" in system
+
+
 # ---------- answer / chat_reply ----------
 
 @pytest.mark.parametrize("lang,name", [("pt", "European Portuguese"), ("en", "English"),

@@ -84,6 +84,31 @@ def timestamp_comparisons(query: exp.Expression) -> exp.Expression:
     return query
 
 
+def widen_ilike(sql: str) -> str | None:
+    """``x ILIKE 'Maia'`` → ``x ILIKE '%Maia%'``; ``None`` se não houver nada a alargar.
+
+    Para quando um filtro por nome sem ``%`` devolve 0 linhas (o nome na BD é
+    "BurgerLab Maia"). Não toca em padrões que já têm ``%``, em padrões vazios
+    (``'%%'`` apanhava tudo) nem em filtros negados (``NOT ILIKE``, ``NOT (…)``,
+    ``NOT EXISTS``): aí alargar devolveria *menos* linhas, não mais.
+    O resultado tem de passar outra vez por ``validate_sql``.
+    """
+    try:
+        query = sqlglot.parse_one(sql, read="postgres")
+    except sqlglot.errors.ParseError:
+        return None
+    changed = False
+    for node in list(query.find_all(exp.ILike)):
+        pattern = node.expression
+        if (node.args.get("negate") or node.find_ancestor(exp.Not)
+                or not isinstance(pattern, exp.Literal) or not pattern.is_string
+                or not pattern.this or "%" in pattern.this):
+            continue
+        node.set("expression", exp.Literal.string(f"%{pattern.this}%"))
+        changed = True
+    return query.sql(dialect="postgres") if changed else None
+
+
 def validate_sql(sql: str) -> str:
     """Parseia e valida o SQL; devolve a forma canónica em dialecto Postgres.
 

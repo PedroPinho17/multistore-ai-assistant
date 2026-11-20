@@ -1,7 +1,7 @@
 """O validador é a 1.ª barreira contra SQL perigoso escrito pelo LLM."""
 import pytest
 
-from multistore_ai_assistant.assistant.sql_validator import MAX_SQL_LENGTH, InvalidSQL, validate_sql
+from multistore_ai_assistant.assistant.sql_validator import MAX_SQL_LENGTH, InvalidSQL, validate_sql, widen_ilike
 
 ALLOWED = [
     "SELECT 1",
@@ -130,3 +130,43 @@ UNCHANGED = {
 @pytest.mark.parametrize("sql", UNCHANGED.values(), ids=UNCHANGED.keys())
 def test_other_comparisons_are_left_alone(sql):
     assert validate_sql(sql) == sql
+
+
+# ---------- widen_ilike: 0 linhas com ILIKE sem % ----------
+
+@pytest.mark.parametrize("sql,expected", [
+    ("SELECT name FROM stores WHERE name ILIKE 'Maia'",
+     "SELECT name FROM stores WHERE name ILIKE '%Maia%'"),
+    ("SELECT 1 FROM stock AS s JOIN stores AS st ON st.id = s.store_id JOIN ingredients AS i ON i.id = s.ingredient_id "
+     "WHERE st.name ILIKE 'coimbra' AND i.name ILIKE '%queijo%'",                         # só o que não tem %
+     "SELECT 1 FROM stock AS s JOIN stores AS st ON st.id = s.store_id JOIN ingredients AS i ON i.id = s.ingredient_id "
+     "WHERE st.name ILIKE '%coimbra%' AND i.name ILIKE '%queijo%'"),
+    ("SELECT name FROM products WHERE name ILIKE 'Pastel d''Nata'",                         # aspas escapadas
+     "SELECT name FROM products WHERE name ILIKE '%Pastel d''Nata%'"),
+    ("SELECT name FROM stores WHERE id IN (SELECT store_id FROM sales) AND name ILIKE 'Porto'",
+     "SELECT name FROM stores WHERE id IN (SELECT store_id FROM sales) AND name ILIKE '%Porto%'"),
+])
+def test_widen_ilike_adds_wildcards(sql, expected):
+    assert widen_ilike(sql) == expected
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT name FROM stores WHERE name ILIKE '%Maia%'",                  # já alargado
+    "SELECT name FROM stores WHERE name ILIKE 'Maia%'",                   # o LLM já escolheu o padrão
+    "SELECT name FROM stores WHERE name ILIKE ''",                        # '%%' apanhava tudo
+    "SELECT name FROM stores WHERE name NOT ILIKE 'Maia'",                # negado: daria menos linhas
+    "SELECT name FROM stores WHERE NOT (name ILIKE 'Maia')",
+    "SELECT name FROM stores AS st WHERE NOT EXISTS (SELECT 1 FROM brands AS b WHERE b.name ILIKE 'Gelato')",
+    "SELECT name FROM stores WHERE name ILIKE ANY (ARRAY['Maia', 'Porto'])",
+    "SELECT name FROM stores WHERE name LIKE 'Maia'",                     # LIKE: o LLM quis distinguir maiúsculas
+    "SELECT name FROM stores WHERE name = 'Maia'",
+    "isto não é SQL (",
+])
+def test_widen_ilike_leaves_everything_else_alone(sql):
+    assert widen_ilike(sql) is None
+
+
+def test_widened_sql_still_passes_the_validator():
+    wider = widen_ilike("SELECT name FROM stores WHERE name ILIKE 'Maia' AND city ILIKE 'Maia'")
+    assert validate_sql(wider) == wider
+

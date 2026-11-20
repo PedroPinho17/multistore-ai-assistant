@@ -231,7 +231,7 @@ def pipeline(monkeypatch):
     monkeypatch.setattr(ask_mod, "classify", lambda q: ("data", 0.9))
     monkeypatch.setattr(ask_mod, "answer", lambda *a, **k: "ok")
 
-    def gen(q, h=None):
+    def gen(q, h=None, failed=None):
         calls["generate"] += 1
         return "SELECT 2"
     monkeypatch.setattr(ask_mod, "generate_sql", gen)
@@ -345,7 +345,7 @@ def test_menu_questions_misread_as_orders_go_to_the_llm(question):
 
 def test_menu_question_reaches_the_sql_path(monkeypatch):
     monkeypatch.setattr(ask_mod, "classify", lambda q: ("orders", 0.999))
-    monkeypatch.setattr(ask_mod, "generate_sql", lambda q, h=None: "SELECT 1")
+    monkeypatch.setattr(ask_mod, "generate_sql", lambda q, h=None, failed=None: "SELECT 1")
     monkeypatch.setattr(ask_mod, "run_query", lambda s, u: (["x"], [(1,)]))
     monkeypatch.setattr(ask_mod, "answer", lambda *a, **k: "ok")
     monkeypatch.setattr(ask_mod, "orders_answer", lambda u: pytest.fail("não devia ir ao modelo de encomendas"))

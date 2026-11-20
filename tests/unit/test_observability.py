@@ -97,7 +97,7 @@ def fake_pipeline(monkeypatch):
     def setup(intent, sql="SELECT 1"):
         monkeypatch.setattr(ask_mod, "classify", lambda q: (intent, 0.9))
 
-        def gen(q, h=None):
+        def gen(q, h=None, failed=None):
             calls["generate"] += 1
             return sql
         monkeypatch.setattr(ask_mod, "generate_sql", gen)
