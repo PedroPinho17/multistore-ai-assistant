@@ -40,10 +40,10 @@ ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 
 COPY docker/entrypoint.sh /entrypoint.sh
 
-# Utilizador sem privilégios; models/ e eval/ são escritos no 1.º arranque
+# Utilizador sem privilégios; models/ e eval/ são escritos no 1.º arranque, data/avatars/ pelas fotos de perfil
 RUN useradd --create-home --uid 1000 app \
- && mkdir -p /app/models /app/eval \
- && chown -R app:app /app/models /app/eval \
+ && mkdir -p /app/models /app/eval /app/data/avatars \
+ && chown -R app:app /app/models /app/eval /app/data/avatars \
  && sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 USER app
 

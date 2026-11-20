@@ -26,7 +26,7 @@ Os gestores de um grupo de restauração português (fictício) fazem perguntas 
 - **RAG com pgvector**, **cache de SQL** para perguntas repetidas em qualquer das quatro línguas, e um **ciclo de revisão dos 👎** em que quem revê corrige o SQL, testa-o e ensina o assistente.
 - **Previsão de vendas** com meteorologia real (Open-Meteo) e feriados portugueses, e sugestões de encomenda de ingredientes.
 - **Aplicação web pronta a usar** (Vue, sem passo de build): respostas em streaming, gráficos, sugestões de seguimento, conversas guardadas, contas e módulos, painel de observabilidade, recuperação de password por email, modo escuro, quatro línguas, acessível e adaptada ao telemóvel.
-- **Testado e reproduzível:** 810 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
+- **Testado e reproduzível:** 845 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
 
 | Resposta com gráfico e tabela | Gerente de loja: RLS + o SQL usado |
 |---|---|
@@ -146,6 +146,7 @@ Faz a mesma pergunta com cada conta para ver o row-level security a funcionar. C
 | `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Opcional. Emails de recuperação de password; sem `SMTP_HOST` não se envia nada |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` | Opcional. Conta de admin privada criada no arranque |
 | `APP_PORT`, `ENABLE_DOCS`, `INTENT_MODEL`, `DB_POOL_MAX`, `HF_HUB_OFFLINE` | Opcional. Porta, Swagger em `/docs`, classificador (`xlmr` / `minilm`), tamanho do pool, embeddings offline |
+| `AVATAR_DIR` | Opcional. Pasta das fotos de perfil (por defeito `data/avatars`, um volume no Docker; fora do git) |
 
 <details>
 <summary>Instalação manual (para desenvolvimento)</summary>
@@ -178,7 +179,7 @@ uv run pytest tests/unit       # sem base de dados, sem LLM, sem modelos (~6 s)
 uv run pytest --cov            # com cobertura
 ```
 
-**810 testes** (625 unitários + 185 de integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM e o fluxo de recuperação de password.
+**845 testes** (651 unitários + 194 de integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM, o fluxo de recuperação de password e o envio de fotos de perfil (imagens falsas, tamanho, tipo).
 
 <details>
 <summary>API</summary>
@@ -190,6 +191,8 @@ uv run pytest --cov            # com cobertura
 | `POST` | `/password/reset` | – | `{token, new_password}` |
 | `GET` | `/me`, `/profile` | Bearer | Utilizador atual, módulos, âmbito e estatísticas de uso |
 | `POST` / `PUT` | `/profile/password`, `/profile/email` | Bearer | Mudar a própria password / email de recuperação (não nas contas de demo) |
+| `POST` / `DELETE` | `/me/avatar` | Bearer | Foto da própria conta: PNG/JPEG/WebP em bruto até 2 MB, verificada com o Pillow e guardada como WebP 256×256 sem EXIF; `DELETE` volta às iniciais (não nas contas de demo) |
+| `GET` | `/avatars/{uuid}.webp` | Bearer | Uma foto de perfil (as URLs vêm do `/me` e do `/users`, com `?v=` para o browser não mostrar a antiga) |
 | `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → resposta, SQL, linhas, sugestões (stream: Server-Sent Events) |
 | `POST` | `/explain` | Bearer (*sql*) | Explicação em linguagem simples do SQL de uma das tuas respostas |
 | `GET` | `/alerts` | Bearer | Quedas/subidas de vendas e stock baixo no teu âmbito |

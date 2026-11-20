@@ -13,9 +13,10 @@ backup/
 Contas-teste.txt
 COMO_CORRER*.txt
 
-# Grandes ou gerados (models/ e eval/ são montados como volumes pelo docker-compose)
+# Grandes ou gerados (models/, eval/ e data/avatars/ são montados como volumes pelo docker-compose)
 models/
 eval/
+data/avatars/
 *.zip
 *.joblib
 *.safetensors

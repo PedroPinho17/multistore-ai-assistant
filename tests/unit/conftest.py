@@ -37,7 +37,7 @@ def fake_request_log(monkeypatch):
 @pytest.fixture(autouse=True)
 def fake_me_details(monkeypatch):
     """Foto e marca da conta (o /me junta-as ao perfil) sem ir à BD."""
-    patch_route(monkeypatch, "me_details", lambda user: {"avatar": None, "brand_name": None})
+    patch_route(monkeypatch, "me_details", lambda user: {"avatar_url": None, "brand_name": None})
 
 
 @pytest.fixture(autouse=True)

@@ -9,6 +9,7 @@ import re
 import bcrypt
 import psycopg
 
+from multistore_ai_assistant.api.avatars import avatar_url, remove_file
 from multistore_ai_assistant.api.permissions import (
     MAX_CREATED_PER_USER,
     MODULES,
@@ -57,7 +58,7 @@ SELECT_USERS = """
     SELECT u.id, u.username, u.role, u.brand_id, u.store_id, s.brand_id AS store_brand,
            u.modules, u.active, u.protected, u.created_by, c.username AS created_by_name,
            u.created_at, u.last_login, coalesce(b.name, sb.name) AS brand_name, s.name AS store_name,
-           u.avatar, u.email
+           u.avatar_path, u.avatar_updated_at, u.email
     FROM users u
     LEFT JOIN stores s  ON s.id = u.store_id
     LEFT JOIN brands b  ON b.id = u.brand_id
@@ -70,6 +71,7 @@ def _row_to_user(cur, row) -> dict:
     """Linha de ``SELECT_USERS`` → dict (módulos efetivos, datas em ISO)."""
     u = dict(zip([c.name for c in cur.description], row, strict=False))
     u["modules"] = effective_modules(u["role"], u["modules"])
+    u["avatar_url"] = avatar_url(u.pop("avatar_path"), u.pop("avatar_updated_at"))
     for k in ("created_at", "last_login"):
         u[k] = u[k].isoformat() if u[k] else None
     return u
@@ -200,4 +202,5 @@ def delete_user(actor: dict, user_id: int) -> None:
     require_not_demo(actor)
     with connection("owner") as conn:
         _target(conn, actor, user_id)
-        conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        row = conn.execute("DELETE FROM users WHERE id = %s RETURNING avatar_path", (user_id,)).fetchone()
+    remove_file(row[0] if row else None)               # depois do commit: a foto vai com a conta

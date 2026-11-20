@@ -85,11 +85,6 @@ class EmailIn(BaseModel):
     email: str | None = Field(default=None, max_length=254)
 
 
-class AvatarIn(BaseModel):
-    """Corpo do POST /profile/avatar: data URL PNG/JPEG/WebP (a UI envia 160×160)."""
-    image: str = Field(min_length=1, max_length=100_000)
-
-
 class NewUserIn(BaseModel):
     """Corpo do POST /users."""
     username: str = Field(min_length=3, max_length=32)

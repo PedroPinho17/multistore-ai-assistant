@@ -46,7 +46,8 @@ def test_a_demo_account_cannot_create_accounts():
     ("patch", "/users/50", {"active": False}),
     ("delete", "/users/50", None),
     ("post", "/profile/password", {"current_password": "imperador123", "new_password": "Trancada-Pass-2026!"}),
-    ("delete", "/profile/avatar", None),
+    ("post", "/me/avatar", {"image": "x"}),
+    ("delete", "/me/avatar", None),
 ])
 def test_demo_writes_are_refused(demo, monkeypatch, method, path, body):
     from multistore_ai_assistant.api import users as users_logic

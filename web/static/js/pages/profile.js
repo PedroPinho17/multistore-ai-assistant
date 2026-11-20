@@ -11,10 +11,10 @@ const ProfilePage = {
               <div class="identity-name">{{ user.username }} <span class="chip-role">{{ t.roles[user.role] }}</span></div>
               <p class="scope">{{ scopeText }}</p>
               <div class="avatar-tools" v-if="!user.demo">
-                <label class="btn-soft sm" for="avatar-file"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg> {{ t.avatar.change }}</label>
-                <input id="avatar-file" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="uploadAvatar" />
-                <button v-if="user.avatar" type="button" class="btn-soft sm" @click="removeAvatar"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg> {{ t.avatar.remove }}</button>
-                <span class="help">{{ user.avatar ? t.avatar.hint : t.avatar.fallback }}</span>
+                <label class="btn-soft sm" for="avatar-file" :aria-disabled="avatarSaving ? 'true' : null"><svg class="i" aria-hidden="true"><use href="#i-camera"/></svg> {{ avatarSaving ? t.avatar.saving : t.avatar.change }}</label>
+                <input id="avatar-file" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" :disabled="avatarSaving" @change="uploadAvatar" />
+                <button v-if="user.avatar_url" type="button" class="btn-soft sm" :disabled="avatarSaving" @click="removeAvatar"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg> {{ t.avatar.remove }}</button>
+                <span class="help" aria-live="polite">{{ user.avatar_url ? t.avatar.hint : t.avatar.fallback }}</span>
               </div>
             </div>
           </section>

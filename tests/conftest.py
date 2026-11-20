@@ -30,6 +30,7 @@ from multistore_ai_assistant.api.routes import (  # noqa: E402
     admin,
     ask,
     auth,
+    avatars,
     conversations,
     pages,
     profile,
@@ -40,7 +41,7 @@ from multistore_ai_assistant.api.routes import (  # noqa: E402
 
 LIMITERS = deps.LIMITERS
 # review_logic: o /feedback valida o SQL com api.review.teachable_sql (run_query, add_example)
-ROUTE_MODULES = (auth, profile, ask, conversations, users, admin, review, settings, pages, review_logic)
+ROUTE_MODULES = (auth, profile, avatars, ask, conversations, users, admin, review, settings, pages, review_logic)
 
 
 def patch_route(mp, name: str, value) -> None:

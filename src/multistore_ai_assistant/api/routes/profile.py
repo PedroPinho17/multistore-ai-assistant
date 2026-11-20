@@ -1,4 +1,4 @@
-"""Página de perfil: estatísticas, password e foto (``/profile``)."""
+"""Página de perfil: estatísticas, password e email (``/profile``; a foto está em ``routes/avatars``)."""
 import logging
 
 from fastapi import APIRouter, Depends
@@ -7,8 +7,8 @@ from multistore_ai_assistant.api.auth import current_user
 from multistore_ai_assistant.api.deps import conversation_user, password_limiter
 from multistore_ai_assistant.api.errors import ApiError
 from multistore_ai_assistant.api.permissions import require_not_demo
-from multistore_ai_assistant.api.profile import AvatarError, PasswordError, change_password, get_profile, set_avatar
-from multistore_ai_assistant.api.schemas import AvatarIn, EmailIn, PasswordIn
+from multistore_ai_assistant.api.profile import PasswordError, change_password, get_profile
+from multistore_ai_assistant.api.schemas import EmailIn, PasswordIn
 from multistore_ai_assistant.api.users import normalize_email, set_email
 from multistore_ai_assistant.db.pool import connection
 
@@ -48,22 +48,3 @@ def profile_email(body: EmailIn, user: dict = Depends(conversation_user)):
         set_email(conn, user["id"], email)
     log.info("Email da conta %r %s", user["username"], "alterado" if email else "removido")
     return {"email": email}
-
-
-@router.post("/avatar")
-def profile_avatar(body: AvatarIn, user: dict = Depends(conversation_user)):
-    """Guarda a foto de perfil (validada: tipo, tamanho e bytes da imagem)."""
-    require_not_demo(user)                # a foto da conta de demo aparecia a todos os visitantes
-    try:
-        set_avatar(user["username"], body.image)
-    except AvatarError as e:
-        raise ApiError(e.code, 400, str(e)) from None
-    return {"ok": True}
-
-
-@router.delete("/avatar")
-def profile_avatar_delete(user: dict = Depends(conversation_user)):
-    """Remove a foto de perfil (volta o logótipo da marca ou do grupo)."""
-    require_not_demo(user)
-    set_avatar(user["username"], None)
-    return {"ok": True}

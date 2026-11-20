@@ -26,7 +26,7 @@ Managers of a (fictional) Portuguese restaurant group ask questions in **Portugu
 - **RAG with pgvector**, a **SQL cache** for repeated questions in any of the four languages, and a **👎 review loop** where a reviewer fixes the SQL, tests it and teaches the assistant.
 - **Sales forecasting** with real weather (Open-Meteo) and Portuguese holidays, plus ingredient order suggestions.
 - **Product-ready web app** (Vue, no build step): streaming answers, charts, follow-up suggestions, saved conversations, accounts and modules, observability dashboard, password reset by email, dark mode, four languages, accessible, mobile.
-- **Tested and reproducible:** 810 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
+- **Tested and reproducible:** 845 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
 
 | Answer with chart and table | Store manager: RLS + the SQL used |
 |---|---|
@@ -146,6 +146,7 @@ Ask the same question with each account to see row-level security at work. Their
 | `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Optional. Password reset emails; without `SMTP_HOST` nothing is sent |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` | Optional. Private admin account created on start |
 | `APP_PORT`, `ENABLE_DOCS`, `INTENT_MODEL`, `DB_POOL_MAX`, `HF_HUB_OFFLINE` | Optional. Port, Swagger at `/docs`, classifier (`xlmr` / `minilm`), pool size, offline embeddings |
+| `AVATAR_DIR` | Optional. Folder for profile photos (default `data/avatars`, a Docker volume; not in git) |
 
 <details>
 <summary>Manual setup (for development)</summary>
@@ -178,7 +179,7 @@ uv run pytest tests/unit       # no database, no LLM, no models (~6 s)
 uv run pytest --cov            # with coverage
 ```
 
-**810 tests** (625 unit + 185 integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback and the password reset flow.
+**845 tests** (651 unit + 194 integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback, the password reset flow and profile photo uploads (fake images, size, type).
 
 <details>
 <summary>API</summary>
@@ -190,6 +191,8 @@ uv run pytest --cov            # with coverage
 | `POST` | `/password/reset` | – | `{token, new_password}` |
 | `GET` | `/me`, `/profile` | Bearer | Current user, modules, scope and usage stats |
 | `POST` / `PUT` | `/profile/password`, `/profile/email` | Bearer | Change own password / recovery email (not for demo accounts) |
+| `POST` / `DELETE` | `/me/avatar` | Bearer | Own profile photo: raw PNG/JPEG/WebP body up to 2 MB, checked with Pillow and stored as a 256×256 WebP without EXIF; `DELETE` goes back to initials (not for demo accounts) |
+| `GET` | `/avatars/{uuid}.webp` | Bearer | A profile photo (URLs come from `/me` and `/users`, with `?v=` for cache-busting) |
 | `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → answer, SQL, rows, suggestions (stream: Server-Sent Events) |
 | `POST` | `/explain` | Bearer (*sql*) | Plain-language explanation of the SQL of one of your answers |
 | `GET` | `/alerts` | Bearer | Sales drops/rises and low stock in your scope |

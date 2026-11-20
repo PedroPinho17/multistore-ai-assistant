@@ -66,6 +66,7 @@ const RootApp = {
       profile: null, clock: Date.now(),
       pw: { current: "", new: "", confirm: "", show: false, saving: false, error: "", ok: false },
       em: { value: "", saving: false, error: "", ok: false },                         // email da conta (perfil)
+      avatarSaving: false,                                                             // foto a ser enviada (perfil)
       fp: { open: false, login: "", sending: false, sent: false, error: "" },          // "Esqueceu-se da password?"
       rp: { token: "", pass: "", confirm: "", show: false, saving: false, done: false, error: "" },  // /reset-password
     };
@@ -317,20 +318,28 @@ const RootApp = {
     async uploadAvatar(e) {
       const file = e.target.files?.[0];
       e.target.value = "";
-      if (!file) return;
+      if (!file || this.avatarSaving) return;
+      // Verificação rápida no browser; quem decide é o servidor (abre a imagem com o Pillow)
+      if (!AVATAR_TYPES.includes(file.type) || file.size > AVATAR_MAX_BYTES) return this.toast(this.t.avatar.bad);
+      this.avatarSaving = true;
       try {
-        const image = await avatarFromFile(file);
-        await this.api("/profile/avatar", { image });
-        this.user = { ...this.user, avatar: image }; store.set("user", JSON.stringify(this.user));
+        const { avatar_url } = await this.api("/me/avatar", file);
+        this.setMyAvatar(avatar_url);
         this.toast(this.t.avatar.saved, "ok");
-      } catch (err) { this.toast(err.status ? err.message : this.t.avatar.bad); }
+      } catch (err) { this.toast(err.message); }
+      finally { this.avatarSaving = false; }
     },
     async removeAvatar() {
       try {
-        await this.api("/profile/avatar", null, "DELETE");
-        this.user = { ...this.user, avatar: null }; store.set("user", JSON.stringify(this.user));
+        await this.api("/me/avatar", null, "DELETE");
+        this.setMyAvatar(null);
         this.toast(this.t.avatar.removed, "ok");
       } catch (err) { this.toast(err.message); }
+    },
+    setMyAvatar(url) {                           // a URL nova traz ?v=: a barra lateral, o perfil e as contas mudam já
+      this.user = { ...this.user, avatar_url: url }; store.set("user", JSON.stringify(this.user));
+      const me = this.um.list.find(u => u.is_me);
+      if (me) me.avatar_url = url;
     },
     fillDemo(d) {
       this.username = d.user; this.password = d.pass; this.loginError = "";
@@ -490,13 +499,14 @@ const RootApp = {
     },
 
     async api(path, body, method) {
+      const raw = body instanceof Blob;            // um ficheiro (foto de perfil) vai em bruto, com o seu tipo
       let res;
       try {
         res = await fetch(path, {
           method: method || (body ? "POST" : "GET"),
-          headers: { "Content-Type": "application/json", "Accept-Language": this.lang,
+          headers: { "Content-Type": raw ? body.type : "application/json", "Accept-Language": this.lang,
                      ...(this.token ? { Authorization: "Bearer " + this.token } : {}) },
-          body: body ? JSON.stringify(body) : undefined,
+          body: raw ? body : body ? JSON.stringify(body) : undefined,
         });
       } catch { throw new Error(this.t.network); }
       if (res.status === 401 && this.token) { this.logout("login"); throw new Error(this.t.loginError); }
@@ -540,6 +550,7 @@ const RootApp = {
       this.um = { list: [], options: null, loading: false, form: null, editId: null, edit: null, query: "", role: "", status: "" };
       this.adm = { data: null, days: 7, loading: false, error: "", updated: null };
       store.del("token"); store.del("user");
+      avatarCache.clear();                         // fotos vistas com esta sessão
       this.go(typeof to === "string" ? to : "home");
     },
     clearChat() { this.newConversation(); },

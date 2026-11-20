@@ -36,6 +36,8 @@ services:
       - ./models:/app/models
       # Avaliação: perguntas e histórico de resultados (o painel admin lê eval/results)
       - ./eval:/app/eval
+      # Fotos de perfil (WebP 256×256): ficam no teu computador entre rebuilds
+      - ./data/avatars:/app/data/avatars
 
 volumes:
   pgdata:

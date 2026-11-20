@@ -18,6 +18,7 @@ from multistore_ai_assistant.api.routes import (
     admin,
     ask,
     auth,
+    avatars,
     conversations,
     examples,
     pages,
@@ -102,13 +103,15 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    # API: nunca guardar em cache. Página e ficheiros estáticos: pode guardar, mas confirma sempre se mudou
+    # API: nunca guardar em cache. Página e ficheiros estáticos: pode guardar, mas confirma sempre se mudou.
+    # Uma rota que já escolheu a sua cache (as fotos de perfil, que nunca mudam de conteúdo) fica com ela.
     static = (request.url.path in ("/", "/favicon.ico") or request.url.path.startswith("/static/")
               or is_page_request(request))
-    response.headers["Cache-Control"] = "no-cache" if static else "no-store"
+    if "cache-control" not in response.headers:
+        response.headers["Cache-Control"] = "no-cache" if static else "no-store"
     return response
 
 
-for module in (auth, password, profile, ask, conversations, users, admin, review, examples, settings, pages):
+for module in (auth, password, profile, avatars, ask, conversations, users, admin, review, examples, settings, pages):
     app.include_router(module.router)
 app.mount("/static", StaticFiles(directory=WEB_DIR / "static", check_dir=False), name="static")

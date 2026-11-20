@@ -150,12 +150,16 @@ CATALOG = {
     "demo_no_email": _("As contas de demonstração não têm email.", "Demo accounts have no email.",
                        "Las cuentas de demostración no tienen correo.", "Les comptes de démonstration n'ont pas d'e-mail."),
     # foto de perfil
-    "avatar_too_big": _("A imagem é demasiado grande.", "The image is too big.", "La imagen es demasiado grande.", "L'image est trop grande."),
+    "avatar_too_big": _("A imagem tem mais de 2 MB.", "The image is larger than 2 MB.",
+                        "La imagen pesa más de 2 MB.", "L'image dépasse 2 Mo."),
     "avatar_bad_format": _("Formato inválido: usa PNG, JPEG ou WebP.", "Invalid format: use PNG, JPEG or WebP.",
                            "Formato no válido: usa PNG, JPEG o WebP.", "Format invalide : utilise PNG, JPEG ou WebP."),
     "avatar_corrupt": _("Imagem corrompida.", "Corrupted image.", "Imagen dañada.", "Image corrompue."),
-    "avatar_not_image": _("O conteúdo não é uma imagem válida.", "The content isn't a valid image.",
-                          "El contenido no es una imagen válida.", "Le contenu n'est pas une image valide."),
+    "avatar_not_image": _("O ficheiro não é uma imagem PNG, JPEG ou WebP válida.",
+                          "The file isn't a valid PNG, JPEG or WebP image.",
+                          "El archivo no es una imagen PNG, JPEG o WebP válida.",
+                          "Le fichier n'est pas une image PNG, JPEG ou WebP valide."),
+    "avatar_not_found": _("Foto não encontrada.", "Photo not found.", "Foto no encontrada.", "Photo introuvable."),
     # definições
     "bad_setting": _("Valor inválido: {detail}", "Invalid value: {detail}", "Valor no válido: {detail}", "Valeur invalide : {detail}"),
 }

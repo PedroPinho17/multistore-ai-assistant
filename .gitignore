@@ -35,6 +35,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Fotos de perfil enviadas pelos utilizadores (volume do docker-compose)
+data/avatars/
+
 # Backups da base de dados (dados e hashes de passwords)
 backup/
 *.dump

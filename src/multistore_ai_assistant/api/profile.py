@@ -2,13 +2,10 @@
 
 Tudo filtrado pelo username do token (nunca por um id vindo do cliente).
 """
-import base64
-import binascii
-import re
-
 import bcrypt
 
 from multistore_ai_assistant.api.auth import authenticate
+from multistore_ai_assistant.api.avatars import avatar_url
 from multistore_ai_assistant.db.pool import connection
 
 USER_ID = "(SELECT id FROM users WHERE username = %s)"
@@ -105,60 +102,18 @@ def delete_all_conversations(username: str) -> int:
         return cur.rowcount
 
 
-# ---------- Foto de perfil ----------
-
-AVATAR_MAX_CHARS = 100_000          # ~73 KB de imagem; a UI envia 160×160 WebP (~10 KB)
-_AVATAR_RE = re.compile(r"^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$")
-_MAGIC = {
-    "png": lambda b: b.startswith(b"\x89PNG\r\n\x1a\n"),
-    "jpeg": lambda b: b.startswith(b"\xff\xd8\xff"),
-    "webp": lambda b: b[:4] == b"RIFF" and b[8:12] == b"WEBP",
-}
-
-
-class AvatarError(ValueError):
-    """Imagem recusada (formato, tamanho ou conteúdo não bate com o tipo declarado)."""
-
-    def __init__(self, code: str, message: str):
-        super().__init__(message)
-        self.code = code
-
-
-def check_avatar(data_url: str) -> str:
-    """Valida um data URL de imagem: tipo permitido, tamanho e bytes iniciais do formato.
-
-    Não basta confiar no ``data:image/png``: os primeiros bytes têm de ser
-    mesmo de PNG/JPEG/WebP, para não guardar HTML ou SVG disfarçado.
-    """
-    if len(data_url) > AVATAR_MAX_CHARS:
-        raise AvatarError("avatar_too_big", "A imagem é demasiado grande.")
-    m = _AVATAR_RE.match(data_url)
-    if not m:
-        raise AvatarError("avatar_bad_format", "Formato inválido: usa PNG, JPEG ou WebP.")
-    try:
-        raw = base64.b64decode(m.group(2), validate=True)
-    except (binascii.Error, ValueError):
-        raise AvatarError("avatar_corrupt", "Imagem corrompida.") from None
-    if not _MAGIC[m.group(1)](raw):
-        raise AvatarError("avatar_not_image", "O conteúdo não é uma imagem válida.")
-    return data_url
-
-
-def set_avatar(username: str, data_url: str | None) -> None:
-    """Grava (ou apaga, com ``None``) a foto de perfil da própria conta."""
-    value = check_avatar(data_url) if data_url is not None else None
-    with _conn() as conn:
-        conn.execute("UPDATE users SET avatar = %s WHERE username = %s", (value, username))
-
+# ---------- Foto de perfil (a gravação está em ``avatars``) ----------
 
 def me_details(user: dict) -> dict:
-    """Foto e nome da marca da conta (para o avatar: sem foto, mostra o logótipo da marca)."""
+    """URL da foto (``None`` = a UI mostra as iniciais) e nome da marca da conta."""
     with _conn() as conn:
         row = conn.execute(
-            """SELECT u.avatar, coalesce(b.name, sb.name)
+            """SELECT u.avatar_path, u.avatar_updated_at, coalesce(b.name, sb.name)
                FROM users u
                LEFT JOIN brands b ON b.id = u.brand_id
                LEFT JOIN stores s ON s.id = u.store_id
                LEFT JOIN brands sb ON sb.id = s.brand_id
                WHERE u.username = %s""", (user["username"],)).fetchone()
-    return {"avatar": row[0], "brand_name": row[1]} if row else {"avatar": None, "brand_name": None}
+    if not row:
+        return {"avatar_url": None, "brand_name": None}
+    return {"avatar_url": avatar_url(row[0], row[1]), "brand_name": row[2]}

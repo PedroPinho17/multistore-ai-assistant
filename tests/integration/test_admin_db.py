@@ -289,21 +289,27 @@ def test_pool_reuses_connections():
 
 # ---------- foto de perfil ----------
 
-def test_avatar_roundtrip_and_db_constraint(maia):
-    import base64
+def test_avatar_in_the_accounts_list_and_gone_with_the_account(maia, tmp_path, monkeypatch):
+    from io import BytesIO
 
-    from multistore_ai_assistant.api import profile
-    me = load_user(users.create_user(actor("gestor.burgerlab"), "pytest.foto", "Segura123", "loja",
-                                     store_id=maia[0])["username"])
-    img = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20).decode()
-    profile.set_avatar(me["username"], img)
-    details = profile.me_details(me)
-    assert details == {"avatar": img, "brand_name": "BurgerLab"}       # loja → marca da loja
-    assert any(u["avatar"] == img for u in users.list_users(actor("gestor.burgerlab")))
-    profile.set_avatar(me["username"], None)
-    assert profile.me_details(me)["avatar"] is None
+    from PIL import Image
+
+    from multistore_ai_assistant.api import avatars, profile
+    monkeypatch.setattr(avatars, "AVATAR_DIR", tmp_path)
+    boss = actor("gestor.burgerlab")
+    created = users.create_user(boss, "pytest.foto", "Segura123", "loja", store_id=maia[0])
+    me = load_user(created["username"])
+    assert created["avatar_url"] is None and profile.me_details(me)["avatar_url"] is None
+    png = BytesIO()
+    Image.new("RGB", (64, 64), (10, 120, 200)).save(png, "PNG")
+    url = avatars.save_avatar(me["username"], png.getvalue())
+    assert profile.me_details(me) == {"avatar_url": url, "brand_name": "BurgerLab"}   # loja → marca da loja
+    assert next(u for u in users.list_users(boss) if u["id"] == me["id"])["avatar_url"] == url
+    assert "avatar_path" not in created                                            # só a URL sai para a UI
+    users.delete_user(boss, me["id"])
+    assert list(tmp_path.iterdir()) == []                                          # a foto foi com a conta
     with owner() as c, pytest.raises(psycopg.errors.CheckViolation):
-        c.execute("UPDATE users SET avatar = 'data:text/html,<script>' WHERE username = 'pytest.foto'")
+        c.execute("UPDATE users SET avatar_path = '../../.env' WHERE username = 'gestor.burgerlab'")
 
 
 # ---------- definições ----------
