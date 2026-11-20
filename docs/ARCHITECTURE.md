@@ -6,7 +6,7 @@ This document explains how a question becomes an answer, which decisions shaped 
 
 ```mermaid
 flowchart LR
-    UI["Vue 3 SPA<br/>(web/index.html + static/js/pages)"] -->|JWT, SSE| API["FastAPI<br/>api/main.py + api/routes/"]
+    UI["Vue 3 + Vite SPA<br/>(frontend/ → /)"] -->|JWT, SSE| API["FastAPI<br/>api/main.py + api/routes/"]
     API --> AUTH["auth + permissions<br/>(role, scope, modules)"]
     API --> ASK["assistant/ask.py"]
     ASK --> CLS["Intent classifier<br/>XLM-R (local, CPU)"]
@@ -28,7 +28,7 @@ flowchart LR
 
 | Layer | Code | Responsibility |
 |---|---|---|
-| UI | `web/index.html`, `web/static/js/app.js`, `web/static/js/pages/*.js`, `web/static/css/*.css` | One component per page (home, login, shell, chat, profile, settings, users, admin), no build step. The root app is the single store; `connectPages()` gives each page its data and methods (like an automatic `mapState`/`mapActions`) |
+| UI | `frontend/` (Vue 3 + Vite + Pinia + Vue Router), served at `/` | One view per page (home, login, shell, chat, profile, settings, users, admin, review). Built assets in `frontend/dist`; `/app/*` redirects to `/*` for old links |
 | API | `api/main.py`, `api/routes/*.py`, `api/deps.py`, `api/schemas.py`, `api/errors.py` | App setup and security headers in `main.py`; one `APIRouter` per area; shared dependencies (rate limiters, module checks) and Pydantic bodies; errors as `{"detail": {"code", "message"}}` translated from `Accept-Language` |
 | Identity | `api/auth.py`, `api/permissions.py` | bcrypt + JWT; the profile is re-read from the DB on every request |
 | Orchestration | `assistant/ask.py` | Intent → refusal / chat / ML / SQL cache / text-to-SQL, one retry with the DB error; optional `on_event` callback for streaming |
@@ -36,7 +36,7 @@ flowchart LR
 | Schema | `db/schema.sql`, `db/migrations/`, `db/migrate.py` | Tables, then versioned (`V###`) and repeatable (`R__`) migrations with checksums |
 | Data access | `db/query.py`, `db/pool.py` | Pooled connections; LLM SQL runs as a read-only role under row-level security |
 | Observability | `observability.py`, `api/request_log.py`, `api/admin.py` | Per-request trace (latency, intent, SQL attempts, tokens) and the admin dashboard |
-| Settings | `api/settings.py`, `web/static/settings.js` | Per-account theme/accent/language (in the DB) and admin-only app defaults, cached 30 s |
+| Settings | `api/settings.py`, `frontend/src/lib/accent.ts` | Per-account theme/accent/language (in the DB) and admin-only app defaults, cached 30 s |
 | Evaluation | `evaluate.py`, `eval_results.py`, `.github/workflows/eval.yml` | Execution accuracy on 40 questions, stored with a date on every run |
 
 ## 2. Life of a question

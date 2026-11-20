@@ -25,7 +25,7 @@ Os gestores de um grupo de restauração português (fictício) fazem perguntas 
 - **Classificador de intenção local** (XLM-RoBERTa com fine-tune) que encaminha cumprimentos, recusas, previsões e encomendas sem chamar o LLM.
 - **RAG com pgvector**, **cache de SQL** para perguntas repetidas em qualquer das quatro línguas, e um **ciclo de revisão dos 👎** em que quem revê corrige o SQL, testa-o e ensina o assistente.
 - **Previsão de vendas** com meteorologia real (Open-Meteo) e feriados portugueses, e sugestões de encomenda de ingredientes.
-- **Aplicação web pronta a usar** (Vue, sem passo de build): respostas em streaming, gráficos, sugestões de seguimento, conversas guardadas, contas e módulos, painel de observabilidade, recuperação de password por email, modo escuro, quatro línguas, acessível e adaptada ao telemóvel.
+- **Aplicação web pronta a usar** (Vue 3 + Vite): respostas em streaming, gráficos, sugestões de seguimento, conversas guardadas, contas e módulos, painel de observabilidade, recuperação de password por email, modo escuro, quatro línguas, acessível e adaptada ao telemóvel.
 - **Testado e reproduzível:** 941 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
 
 | Resposta com gráfico e tabela | Gerente de loja: RLS + o SQL usado |
@@ -75,10 +75,10 @@ Decisões de desenho (porquê Groq e não um modelo local, porquê XLM-R, porqu�
 | **Role só de leitura** | Só `SELECT`, transações só de leitura, limite de 10 s, sem acesso às tabelas privadas e `REVOKE` por coluna nos dados pessoais. |
 | **Validador de SQL** | Uma só consulta; sem DML/DDL, catálogos de sistema nem funções que alterem a sessão, leiam ficheiros ou abram ligações. As comparações com datas são reescritas para os planos continuarem rápidos sob RLS. |
 | **API** | Limites de pedidos, verificação de dono, login em tempo constante, JWT com claims obrigatórias, erros genéricos, `/docs` desligado por defeito. A recuperação de password usa tokens de uso único, válidos 30 minutos e guardados em SHA-256, e nunca revela que emails existem. |
-| **Browser** | CSP, `X-Frame-Options: DENY`, `nosniff`, sem referrer, scripts de CDN fixados com Subresource Integrity, token da sessão em `sessionStorage`, proteção contra injeção de fórmulas no CSV. |
+| **Browser** | CSP estrita (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, sem referrer, token da sessão em `sessionStorage`, proteção contra injeção de fórmulas no CSV. |
 | **Infraestrutura** | Nenhum segredo no código; a porta da base de dados só está ligada a `127.0.0.1`. |
 
-Limites conhecidos (aceitáveis numa demo): rate limiter em memória (usar Redis com vários workers), e o Vue sem build precisa de `'unsafe-eval'` na CSP. Mudanças e reposições de password revogam JWTs antigos: cada token leva a `token_version` da conta, que cada mudança incrementa (quem mudou a password recebe um token novo).
+Limites conhecidos (aceitáveis numa demo): rate limiter em memória (usar Redis com vários workers). Mudanças e reposições de password revogam JWTs antigos: cada token leva a `token_version` da conta, que cada mudança incrementa (quem mudou a password recebe um token novo).
 
 ## Resultados
 
@@ -165,8 +165,11 @@ uv run python -m multistore_ai_assistant.data.set_passwords        # contas de d
 uv run python -m multistore_ai_assistant.data.seed_examples
 uv run python -m multistore_ai_assistant.forecast.train
 uv run python -m multistore_ai_assistant.intent.train              # MiniLM; XLM-R: descompacta o output do Kaggle em models/intent-xlmr
+cd frontend; npm ci; npm run build; cd ..                         # a UI (frontend/dist), servida pela API em /
 uv run uvicorn multistore_ai_assistant.api.main:app --port 8001
 ```
+
+Sem `frontend/dist` a API arranca na mesma, mas `/` responde 503 "frontend not built, run npm run build in frontend".
 
 Outros comandos: `db.migrate --status`, `assistant.ask "pergunta"` (CLI), `evaluate 1` (avaliação, guardada em `eval/results`).
 </details>
@@ -235,7 +238,7 @@ src/multistore_ai_assistant/
   forecast/     dataset, treino, previsão, sugestões de encomenda
   data/         gerador de dados fictícios, meteorologia e feriados, passwords de demo, conta de admin
   finetune/     pares de treino e pontuação da experiência com Qwen
-web/            app Vue sem passo de build (pages/, css/)
+frontend/       SPA Vue 3 + Vite (servida em /, com redirecionamentos /app/* → /*)
 tests/          unit/ (sem BD, sem LLM) e integration/ (Postgres real + modelos)
 eval/           perguntas, resultados, relatórios do classificador
 notebooks/      notebooks do Kaggle: fine-tuning de SQL com Qwen, classificador XLM-RoBERTa
