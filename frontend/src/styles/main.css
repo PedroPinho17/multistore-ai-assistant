@@ -1,11 +1,15 @@
-﻿@import './base.css';
-@import './common.css';
-@import './auth.css';
-@import './shell.css';
+﻿/* Same files and same order as the <link> tags of the old UI (web/index.html): with equal
+   specificity the later file wins, so the order is part of the layout.
+   tests/unit/test_css_parity.py checks both. */
+@import './base.css';
 @import './chat.css';
-@import './dialogs.css';
+@import './common.css';
 @import './home.css';
+@import './auth.css';
 @import './pages.css';
+@import './dialogs.css';
+@import './shell.css';
 
+/* Old UI: <div id="app" style="height:100%"> */
 html, body, #app { height: 100%; }
 body { margin: 0; }

@@ -1,7 +1,19 @@
 /* Chat: mensagens, tabelas, gráficos, sugestões e caixa de escrita */
+/* ---------- Layout do chat ---------- */
+.app { display: flex; flex-direction: column; height: 100%; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px;
+         background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(10px);
+         border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .dot { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 18px;
+              background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+.brand .app-title { display: block; font-size: 15px; font-weight: 700; margin: 0; }
 .status { font-size: 12px; color: var(--ok); display: flex; align-items: center; gap: 5px; }
 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
 .status.busy { color: var(--brand); }
+.head-right { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.chip-role { background: var(--brand-soft); color: var(--brand); padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.who { color: var(--muted); }
 
 .chat { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
 .chat-inner { max-width: 860px; margin: 0 auto; padding: 24px 16px 32px; }
@@ -71,6 +83,11 @@ pre { background: var(--code-bg); color: var(--code-text); padding: 12px; border
 .composer .send { width: 42px; height: 42px; padding: 0; border-radius: 12px; font-size: 18px; display: grid; place-items: center;
                   background: linear-gradient(135deg, var(--btn), var(--btn-2)); }
 .hint { max-width: 860px; margin: 6px auto 0; font-size: 11.5px; color: var(--muted); text-align: center; }
+.layout { display: flex; height: 100%; }
+.layout .app { flex: 1; min-width: 0; }
+.sidebar { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px 10px;
+           background: var(--surface); border-right: 1px solid var(--border); }
+.new-chat { width: 100%; text-align: left; }
 .recents-title { font-size: 12px; font-weight: 600; color: var(--muted); padding: 10px 8px 2px; text-transform: uppercase; }
 .conv-list { flex: 1; overflow-y: auto; }
 .conv { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 8px; cursor: pointer;
@@ -86,6 +103,14 @@ pre { background: var(--code-bg); color: var(--code-text); padding: 12px; border
 .conv:hover .conv-del { opacity: .7; }
 .conv-del:hover { opacity: 1 !important; }
 .conv-empty { font-size: 13px; color: var(--muted); padding: 8px 10px; }
+.menu-btn, .backdrop { display: none; }
+@media (max-width: 800px) {
+  .sidebar { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; transform: translateX(-100%);
+             transition: transform .25s; box-shadow: var(--shadow); }
+  .sidebar.open { transform: none; }
+  .backdrop { display: block; position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.4); }
+  .menu-btn { display: inline-block; }
+}
 
 /* Perguntas de seguimento (depois da última resposta) */
 .suggestions.follow { margin-top: -4px; margin-bottom: 8px; }
