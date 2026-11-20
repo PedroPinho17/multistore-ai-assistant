@@ -6,7 +6,7 @@ const DEMO_ACCOUNTS = [
   { user: "gerente.maia", pass: "loja123", role: "loja", icon: "store" },
 ];
 // Páginas da UI: têm de coincidir com UI_PATHS em api/routes/pages.py (o servidor devolve a UI nestes caminhos)
-const ROUTES = { "/": "home", "/login": "login", "/chat": "chat", "/profile": "profile",
+const ROUTES = { "/": "home", "/login": "login", "/reset-password": "reset", "/chat": "chat", "/profile": "profile",
                  "/users": "users", "/admin": "admin", "/settings": "settings", "/review": "review" };
 const PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
 const PRIVATE_VIEWS = ["chat", "profile", "users", "admin", "settings", "review"];
@@ -65,6 +65,9 @@ const RootApp = {
       demo: { msgs: [], typing: false }, demoTimer: null, demoSession: 0,
       profile: null, clock: Date.now(),
       pw: { current: "", new: "", confirm: "", show: false, saving: false, error: "", ok: false },
+      em: { value: "", saving: false, error: "", ok: false },                         // email da conta (perfil)
+      fp: { open: false, login: "", sending: false, sent: false, error: "" },          // "Esqueceu-se da password?"
+      rp: { token: "", pass: "", confirm: "", show: false, saving: false, done: false, error: "" },  // /reset-password
     };
   },
   computed: {
@@ -230,7 +233,9 @@ const RootApp = {
       if (location.pathname !== PATHS[v]) history.replaceState(null, "", PATHS[v] + (v === "home" ? location.hash : ""));
       const prev = this.view;
       // Mesma página (âncora da homepage, link para a página atual): só fecha os menus
-      if (v === prev) { this.userMenu = false; this.sidebarOpen = false; return; }
+      // (exceto um link de recuperação novo aberto na própria página /reset-password)
+      const newResetLink = v === "reset" && location.hash.includes("token=");
+      if (v === prev && !newResetLink) { this.userMenu = false; this.sidebarOpen = false; return; }
       this.view = v;
       this.enterView(v, prev);
     },
@@ -241,7 +246,19 @@ const RootApp = {
       if (v !== prev) { window.scrollTo(0, 0); const ps = document.getElementById("page-scroll"); if (ps) ps.scrollTop = 0; }
       this.userMenu = false; this.sidebarOpen = false;
       if (v === "home") this.startDemo();
-      if (v === "login") this.$nextTick(() => document.getElementById("u")?.focus());
+      if (v === "login") {
+        this.fp.open = false;
+        this.$nextTick(() => document.getElementById("u")?.focus());
+      }
+      if (v === "reset") {
+        // O token vem no fragmento (#token=…, nunca chega ao servidor nem aos logs) e sai logo
+        // do endereço (não fica no histórico nem em capturas de ecrã)
+        const token = new URLSearchParams(location.hash.slice(1)).get("token")
+                   || new URLSearchParams(location.search).get("token") || "";
+        if (location.search || location.hash) history.replaceState(null, "", PATHS.reset);
+        this.rp = { token, pass: "", confirm: "", show: false, saving: false, done: false, error: "" };
+        this.$nextTick(() => document.getElementById("rp-new")?.focus());
+      }
       if (v === "chat") {
         if (!this.messages.length) this.welcome();
         this.loadConversations();
@@ -323,7 +340,55 @@ const RootApp = {
     // ----- Perfil -----
     setTheme(v) { this.themePref = v; prefs.set("theme", v); this.applyTheme(); this.saveSetting({ theme: v }); },
     async loadProfile() {
-      try { this.profile = await this.api("/profile"); } catch {}
+      try {
+        this.profile = await this.api("/profile");
+        this.em = { value: this.profile.email || "", saving: false, error: "", ok: false };
+      } catch {}
+    },
+    async saveEmail() {
+      const em = this.em;
+      em.error = ""; em.ok = false; em.saving = true;
+      try {
+        const r = await this.api("/profile/email", { email: em.value.trim() || null }, "PUT");
+        em.value = r.email || ""; em.ok = true;
+        if (this.profile) this.profile.email = r.email;
+      } catch (e) { em.error = this.apiError(e); }
+      finally { em.saving = false; }
+    },
+
+    // ----- Esqueceu-se da password? (público) -----
+    openForgot() {
+      this.fp = { open: true, login: this.username.includes("@") ? this.username : "", sending: false, sent: false, error: "" };
+      this.$nextTick(() => document.getElementById("fp-login")?.focus());
+    },
+    closeForgot() {
+      this.fp.open = false;
+      this.$nextTick(() => document.getElementById("u")?.focus());
+    },
+    async sendForgot() {
+      const fp = this.fp;
+      fp.error = "";
+      if (fp.login.trim().length < 3) return;
+      fp.sending = true;
+      try {
+        await this.api("/password/forgot", { login: fp.login.trim(), lang: this.lang });
+        fp.sent = true;             // a mesma mensagem exista ou não a conta (não revela emails)
+      } catch (e) { fp.error = e.status === 429 ? this.t.tooMany : this.apiError(e); }
+      finally { fp.sending = false; }
+    },
+    async submitReset() {
+      const rp = this.rp, p = this.t.p;
+      rp.error = "";
+      if (rp.pass.length < 8) rp.error = p.errShort;
+      else if (/^[0-9]+$/.test(rp.pass) || /^[\p{L}]+$/u.test(rp.pass)) rp.error = p.errMix;
+      else if (rp.pass !== rp.confirm) rp.error = p.errMatch;
+      if (rp.error) return;
+      rp.saving = true;
+      try {
+        await this.api("/password/reset", { token: rp.token, new_password: rp.pass });
+        this.rp = { token: "", pass: "", confirm: "", show: false, saving: false, done: true, error: "" };
+      } catch (e) { rp.error = e.status === 429 ? this.t.tooMany : this.apiError(e); }
+      finally { rp.saving = false; }
     },
     async changePassword() {
       const p = this.t.p, pw = this.pw;
@@ -444,7 +509,8 @@ const RootApp = {
     httpError(res, data) {
       const code = data?.detail?.code;
       const known = { 403: this.t.errors.forbidden, 404: this.t.errors.notFound, 429: this.t.tooMany };
-      const err = new Error((code && this.t.errors[code]) || known[res.status]
+      // Com código, a mensagem do servidor já vem traduzida (Accept-Language) e é mais precisa que a genérica
+      const err = new Error((code && this.t.errors[code]) || (code && data?.detail?.message) || known[res.status]
         || (typeof data?.detail === "string" ? data.detail : data?.detail?.message || res.statusText));
       err.status = res.status; err.code = code;
       return err;
@@ -763,7 +829,7 @@ const RootApp = {
 // connectPages dá a cada página acesso a eles, como um mapState/mapActions automático.
 const PAGES = { "home-page": HomePage, "login-page": LoginPage, "app-shell": AppShell, "chat-page": ChatPage,
                 "profile-page": ProfilePage, "settings-page": SettingsPage, "users-page": UsersPage,
-                "admin-page": AdminPage, "review-page": ReviewPage };
+                "admin-page": AdminPage, "review-page": ReviewPage, "reset-page": ResetPage };
 
 function connectPages(root, pages) {
   const sources = [root, ...(root.mixins || [])];

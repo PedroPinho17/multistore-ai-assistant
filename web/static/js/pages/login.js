@@ -7,7 +7,28 @@ const LoginPage = {
     <main class="auth">
       <div class="auth-box" :class="{ shake: shake }">
         <a href="/" class="auth-brand"><svg class="logo-mark" aria-hidden="true"><use href="#logo"/></svg><strong>Multistore AI</strong></a>
-        <form class="auth-form" @submit.prevent="login" novalidate>
+        <!-- Esqueceu-se da password? -->
+        <form v-if="fp.open" class="auth-form" @submit.prevent="sendForgot" novalidate>
+          <h1>{{ t.l.fpTitle }}</h1>
+          <template v-if="!fp.sent">
+            <p class="sub">{{ t.l.fpSub }}</p>
+            <label for="fp-login">{{ t.l.fpLabel }}</label>
+            <div class="field">
+              <span class="field-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+              <input id="fp-login" name="email" v-model.trim="fp.login" type="text" inputmode="email" maxlength="254"
+                     autocomplete="email" autocapitalize="none" spellcheck="false" :placeholder="t.l.fpPh" />
+            </div>
+            <button class="primary" type="submit" :disabled="fp.sending || fp.login.length < 3">
+              <span v-if="fp.sending" class="spinner" aria-hidden="true"></span> {{ t.l.fpSend }}
+            </button>
+            <p class="error" v-if="fp.error" role="alert">{{ fp.error }}</p>
+            <p class="auth-note">{{ t.l.fpDemoNote }}</p>
+          </template>
+          <p v-else class="ok-msg" role="status">✅ {{ t.l.fpSent }}</p>
+          <button type="button" class="link-btn auth-link" @click="closeForgot">← {{ t.l.fpBack }}</button>
+        </form>
+
+        <form v-else class="auth-form" @submit.prevent="login" novalidate>
           <h1>{{ t.l.welcome }}</h1>
           <p class="sub">{{ t.l.sub }}</p>
 
@@ -38,10 +59,10 @@ const LoginPage = {
             {{ loggingIn ? t.l.signingIn : t.login }}
           </button>
           <p class="error" v-if="loginError" role="alert">{{ loginError }}</p>
-
+          <button type="button" class="link-btn auth-link" @click="openForgot">{{ t.l.forgot }}</button>
         </form>
 
-        <div v-if="showDemo" class="demo-list">
+        <div v-if="showDemo && !fp.open" class="demo-list">
           <div class="demo-list-head"><span>{{ t.l.demo }}</span><small>{{ t.l.demoHint }}</small></div>
           <button type="button" v-for="d in demoAccounts" :key="d.user" class="demo-row" @click="fillDemo(d)"
                   :aria-label="t.l.useAccount + ': ' + t.roles[d.role] + ' (' + d.user + ')'">

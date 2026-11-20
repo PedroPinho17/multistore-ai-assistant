@@ -8,7 +8,9 @@ from multistore_ai_assistant.api.deps import conversation_user, password_limiter
 from multistore_ai_assistant.api.errors import ApiError
 from multistore_ai_assistant.api.permissions import require_not_demo
 from multistore_ai_assistant.api.profile import AvatarError, PasswordError, change_password, get_profile, set_avatar
-from multistore_ai_assistant.api.schemas import AvatarIn, PasswordIn
+from multistore_ai_assistant.api.schemas import AvatarIn, EmailIn, PasswordIn
+from multistore_ai_assistant.api.users import normalize_email, set_email
+from multistore_ai_assistant.db.pool import connection
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 log = logging.getLogger("multistore")
@@ -35,6 +37,17 @@ def profile_password(body: PasswordIn, user: dict = Depends(current_user)):
         raise ApiError(e.code, 400, str(e), **e.params) from None
     log.info("Password alterada por %r", user["username"])
     return {"ok": True}
+
+
+@router.put("/email")
+def profile_email(body: EmailIn, user: dict = Depends(conversation_user)):
+    """Email da própria conta (para recuperar a password); vazio ou ``null`` tira-o."""
+    require_not_demo(user)                # contas de demo: a password é pública, não se recupera
+    email = normalize_email(body.email)
+    with connection("owner") as conn:
+        set_email(conn, user["id"], email)
+    log.info("Email da conta %r %s", user["username"], "alterado" if email else "removido")
+    return {"email": email}
 
 
 @router.post("/avatar")

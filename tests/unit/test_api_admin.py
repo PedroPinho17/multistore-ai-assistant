@@ -161,7 +161,7 @@ def test_create_user_passes_the_form_and_the_actor(users_db):
     assert r.status_code == 201
     name, args, _ = users_db[0]
     assert name == "create" and args[0]["username"] == "gestor.burgerlab"
-    assert args[1:] == ("novo.gerente", "Segura123", "loja", None, 1, ["sql", "forecast"])
+    assert args[1:] == ("novo.gerente", "Segura123", "loja", None, 1, ["sql", "forecast"], None)
 
 
 @pytest.mark.parametrize("body", [
@@ -178,7 +178,7 @@ def test_create_user_validates_input(users_db, body):
 def test_update_and_delete(users_db):
     r = client.patch("/users/7", json={"active": False, "modules": ["sql"]}, headers=bearer(MARCA))
     assert r.status_code == 200
-    assert users_db[0][1][1:] == (7, ["sql"], False, None)
+    assert users_db[0][1][1:] == (7, ["sql"], False, None, None)
     assert client.delete("/users/7", headers=bearer(MARCA)).json() == {"ok": True}
 
 

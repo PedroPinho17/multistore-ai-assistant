@@ -22,7 +22,8 @@ DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['users', 'app_secret', 'conversations', 'messages', 'setup_steps', 'request_log',
-                           'user_settings', 'app_settings', 'schema_migrations', 'query_cache'] LOOP
+                           'user_settings', 'app_settings', 'schema_migrations', 'query_cache',
+                           'password_resets'] LOOP
     IF to_regclass('public.' || t) IS NOT NULL THEN
       EXECUTE format('REVOKE ALL ON %I FROM assistente', t);
     END IF;

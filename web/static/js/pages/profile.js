@@ -97,6 +97,24 @@ const ProfilePage = {
                 <p class="ok-msg" v-if="pw.ok" role="status">✅ {{ t.p.pwDone }}</p>
               </form>
             </section>
+
+            <section class="card">
+              <h2>{{ t.p.emailTitle }}</h2>
+              <p v-if="user.demo" class="demo-note" role="note"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg> {{ t.p.emailDemo }}</p>
+              <form v-else class="form" @submit.prevent="saveEmail" novalidate>
+                <p class="muted" style="margin-top:0">{{ t.p.emailHint }}</p>
+                <label for="pf-email">Email</label>
+                <div class="field">
+                  <input id="pf-email" name="email" type="email" v-model="em.value" maxlength="254"
+                         autocomplete="email" autocapitalize="none" spellcheck="false" />
+                </div>
+                <button class="primary" type="submit" :disabled="em.saving || em.value.trim() === (profile?.email || '')">
+                  <span v-if="em.saving" class="spinner" aria-hidden="true"></span> {{ t.p.emailSave }}
+                </button>
+                <p class="error" v-if="em.error" role="alert">{{ em.error }}</p>
+                <p class="ok-msg" v-if="em.ok" role="status">✅ {{ em.value ? t.p.emailSaved : t.p.emailRemoved }}</p>
+              </form>
+            </section>
           </div>
 
           <section class="card danger-zone">

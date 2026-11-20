@@ -98,6 +98,7 @@
 <div id="app" v-cloak style="height:100%">
   <home-page v-if="view === 'home'"></home-page>
   <login-page v-else-if="view === 'login'"></login-page>
+  <reset-page v-else-if="view === 'reset'"></reset-page>
   <app-shell v-else-if="view && user"></app-shell>
 
   <!-- Diálogo de confirmação (substitui a janela de confirmação do browser) -->
@@ -142,6 +143,7 @@
 <script src="/static/js/texts.js"></script>
 <script src="/static/js/pages/home.js"></script>
 <script src="/static/js/pages/login.js"></script>
+<script src="/static/js/pages/reset.js"></script>
 <script src="/static/js/pages/shell.js"></script>
 <script src="/static/js/pages/chat.js"></script>
 <script src="/static/js/pages/profile.js"></script>

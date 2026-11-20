@@ -27,6 +27,12 @@ const UsersPage = {
                   <div class="help">{{ t.p.pwRules }}</div>
                 </div>
                 <div>
+                  <label for="nu-email">{{ t.um.email }}</label>
+                  <input id="nu-email" name="new-user-email" class="input" type="email" v-model="um.form.email" maxlength="254"
+                         autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="nu-email-help" />
+                  <div id="nu-email-help" class="help">{{ t.um.emailHint }}</div>
+                </div>
+                <div>
                   <label for="nu-role">{{ t.um.role }}</label>
                   <select id="nu-role" name="new-role" class="input" :value="um.form.role" @change="pickRole($event.target.value)">
                     <option v-for="r in um.options.roles" :key="r" :value="r">{{ t.roles[r] }}</option>
@@ -126,6 +132,12 @@ const UsersPage = {
                     <button type="button" class="btn-soft" @click="um.edit.show = !um.edit.show"
                             :aria-label="um.edit.show ? t.l.hide : t.l.show"><svg class="i" aria-hidden="true"><use :href="um.edit.show ? '#i-eyeoff' : '#i-eye'"/></svg></button>
                   </div>
+                </div>
+                <div v-if="!u.protected || u.role === 'admin'">
+                  <label class="lbl" :for="'ed-email-' + u.id">{{ t.um.email }}</label>
+                  <input :id="'ed-email-' + u.id" class="input" type="email" v-model="um.edit.email" maxlength="254"
+                         autocomplete="off" autocapitalize="none" spellcheck="false" />
+                  <div class="help">{{ t.um.emailHint }}</div>
                 </div>
                 <p class="error" v-if="um.edit.error" role="alert" style="margin:0">{{ um.edit.error }}</p>
                 <div class="form-actions" style="margin:0">

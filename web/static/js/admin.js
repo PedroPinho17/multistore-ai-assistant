@@ -50,7 +50,7 @@ const ADMIN_TEXTS = {
       active: "Ativa", inactive: "Desativada", you: "tu", demo: "Demo",
       demoHint: "Conta pública de demonstração: só o admin a pode alterar.",
       createdBy: n => `criada por ${n}`, never: "nunca entrou", lastLogin: "Último acesso",
-      edit: "Editar", save: "Guardar", saved: "Alterações guardadas.", newPassword: "Nova password (opcional)",
+      edit: "Editar", save: "Guardar", saved: "Alterações guardadas.", newPassword: "Nova password (opcional)", email: "Email (opcional)", emailHint: "Usado para recuperar a password por email.",
       disable: "Desativar", enable: "Ativar", delete: "Apagar",
       disableTitle: "Desativar conta?", disableText: "A pessoa deixa de conseguir entrar e a sessão aberta termina já.",
       disabled: "Conta desativada.", enabled: "Conta ativada.",
@@ -118,7 +118,7 @@ const ADMIN_TEXTS = {
       active: "Active", inactive: "Disabled", you: "you", demo: "Demo",
       demoHint: "Public demo account: only the admin can change it.",
       createdBy: n => `created by ${n}`, never: "never signed in", lastLogin: "Last sign-in",
-      edit: "Edit", save: "Save", saved: "Changes saved.", newPassword: "New password (optional)",
+      edit: "Edit", save: "Save", saved: "Changes saved.", newPassword: "New password (optional)", email: "Email (optional)", emailHint: "Used to reset the password by email.",
       disable: "Disable", enable: "Enable", delete: "Delete",
       disableTitle: "Disable account?", disableText: "The person can no longer sign in and any open session ends now.",
       disabled: "Account disabled.", enabled: "Account enabled.",
@@ -186,7 +186,7 @@ const ADMIN_TEXTS = {
       active: "Activa", inactive: "Desactivada", you: "tú", demo: "Demo",
       demoHint: "Cuenta pública de demostración: solo el admin puede modificarla.",
       createdBy: n => `creada por ${n}`, never: "nunca ha entrado", lastLogin: "Último acceso",
-      edit: "Editar", save: "Guardar", saved: "Cambios guardados.", newPassword: "Nueva contraseña (opcional)",
+      edit: "Editar", save: "Guardar", saved: "Cambios guardados.", newPassword: "Nueva contraseña (opcional)", email: "Correo (opcional)", emailHint: "Se usa para restablecer la contraseña por correo.",
       disable: "Desactivar", enable: "Activar", delete: "Borrar",
       disableTitle: "¿Desactivar la cuenta?", disableText: "La persona ya no podrá entrar y la sesión abierta termina ahora.",
       disabled: "Cuenta desactivada.", enabled: "Cuenta activada.",
@@ -254,7 +254,7 @@ const ADMIN_TEXTS = {
       active: "Actif", inactive: "Désactivé", you: "toi", demo: "Démo",
       demoHint: "Compte public de démonstration : seul l'admin peut le modifier.",
       createdBy: n => `créé par ${n}`, never: "jamais connecté", lastLogin: "Dernière connexion",
-      edit: "Modifier", save: "Enregistrer", saved: "Modifications enregistrées.", newPassword: "Nouveau mot de passe (optionnel)",
+      edit: "Modifier", save: "Enregistrer", saved: "Modifications enregistrées.", newPassword: "Nouveau mot de passe (optionnel)", email: "E-mail (optionnel)", emailHint: "Sert à réinitialiser le mot de passe par e-mail.",
       disable: "Désactiver", enable: "Activer", delete: "Supprimer",
       disableTitle: "Désactiver le compte ?", disableText: "La personne ne pourra plus se connecter et la session ouverte se termine maintenant.",
       disabled: "Compte désactivé.", enabled: "Compte activé.",
@@ -313,7 +313,7 @@ function randomPassword(length = 14) {
 }
 
 const emptyForm = () => ({ username: "", password: "", show: false, role: "", brand_id: "", store_id: "",
-                           modules: [], error: "", saving: false });
+                           email: "", modules: [], error: "", saving: false });
 
 const AdminMixin = {
   data() {
@@ -434,7 +434,8 @@ const AdminMixin = {
         const body = { username: f.username.trim().toLowerCase(), password: f.password, role: f.role,
                        brand_id: f.role === "marca" ? Number(f.brand_id) || null : null,
                        store_id: f.role === "loja" ? Number(f.store_id) || null : null,
-                       modules: MODULE_ORDER.filter(m => f.modules.includes(m)) };
+                       modules: MODULE_ORDER.filter(m => f.modules.includes(m)),
+                       email: f.email.trim() || null };
         const created = await this.api("/users", body);
         this.toast(this.t.um.created(created.username), "ok");
         this.um.form = null;
@@ -445,7 +446,7 @@ const AdminMixin = {
     startEdit(u) {
       if (this.um.editId === u.id) { this.um.editId = null; return; }
       this.um.editId = u.id;
-      this.um.edit = { modules: [...u.modules], password: "", show: false, saving: false, error: "" };
+      this.um.edit = { modules: [...u.modules], password: "", email: u.email || "", show: false, saving: false, error: "" };
     },
     editableModules(u) { return this.um.options?.modules?.[u.role] || []; },
     async saveEdit(u) {
@@ -455,6 +456,7 @@ const AdminMixin = {
       const mods = MODULE_ORDER.filter(m => e.modules.includes(m));
       if (mods.join() !== u.modules.join()) body.modules = mods;
       if (e.password) body.password = e.password;
+      if (e.email.trim() !== (u.email || "")) body.email = e.email.trim();        // "" tira o email
       if (!Object.keys(body).length) { this.um.editId = null; return; }
       e.saving = true;
       try {

@@ -43,6 +43,7 @@ def get_profile(user: dict) -> dict:
             FROM messages m JOIN conversations c ON c.id = m.conversation_id
             WHERE c.user_id = {USER_ID} AND m.role = 'assistant'
             GROUP BY 1""", (user["username"],)).fetchall()
+        email = conn.execute("SELECT email FROM users WHERE username = %s", (user["username"],)).fetchone()
         stores_total = conn.execute("SELECT count(*) FROM stores").fetchone()[0]
         stores_brand = (conn.execute("SELECT count(*) FROM stores WHERE brand_id = %s",
                                      (user["brand_id"],)).fetchone()[0] if user.get("brand_id") else None)
@@ -53,6 +54,7 @@ def get_profile(user: dict) -> dict:
         "brand_name": brand[0] if brand else (store[1] if store else None),
         "store_name": store[0] if store else None,
         "visible_stores": visible,
+        "email": email[0] if email else None,
         "stats": {
             "conversations": stats[0],
             "questions": stats[1],

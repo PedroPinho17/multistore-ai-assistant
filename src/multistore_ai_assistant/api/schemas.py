@@ -68,6 +68,23 @@ class PasswordIn(BaseModel):
     new_password: str = Field(min_length=1, max_length=128)
 
 
+class ForgotIn(BaseModel):
+    """Corpo do POST /password/forgot: email (ou nome de utilizador) e a língua do email."""
+    login: str = Field(min_length=3, max_length=254)
+    lang: Lang = "pt"
+
+
+class ResetIn(BaseModel):
+    """Corpo do POST /password/reset: o token do link e a nova password."""
+    token: str = Field(min_length=20, max_length=128)
+    new_password: str = Field(min_length=1, max_length=128)
+
+
+class EmailIn(BaseModel):
+    """Corpo do PUT /profile/email: ``null`` ou vazio tira o email."""
+    email: str | None = Field(default=None, max_length=254)
+
+
 class AvatarIn(BaseModel):
     """Corpo do POST /profile/avatar: data URL PNG/JPEG/WebP (a UI envia 160×160)."""
     image: str = Field(min_length=1, max_length=100_000)
@@ -81,13 +98,15 @@ class NewUserIn(BaseModel):
     brand_id: int | None = None
     store_id: int | None = None
     modules: list[Module] | None = Field(default=None, max_length=10)
+    email: str | None = Field(default=None, max_length=254)
 
 
 class UserPatchIn(BaseModel):
-    """Corpo do PATCH /users/{id}: só os campos enviados mudam."""
+    """Corpo do PATCH /users/{id}: só os campos enviados mudam (``email: ""`` tira o email)."""
     modules: list[Module] | None = Field(default=None, max_length=10)
     active: bool | None = None
     password: str | None = Field(default=None, min_length=1, max_length=128)
+    email: str | None = Field(default=None, max_length=254)
 
 
 class UserSettingsIn(BaseModel):

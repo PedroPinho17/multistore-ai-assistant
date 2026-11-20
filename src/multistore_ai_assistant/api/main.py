@@ -21,6 +21,7 @@ from multistore_ai_assistant.api.routes import (
     conversations,
     examples,
     pages,
+    password,
     profile,
     review,
     settings,
@@ -108,6 +109,6 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-for module in (auth, profile, ask, conversations, users, admin, review, examples, settings, pages):
+for module in (auth, password, profile, ask, conversations, users, admin, review, examples, settings, pages):
     app.include_router(module.router)
 app.mount("/static", StaticFiles(directory=WEB_DIR / "static", check_dir=False), name="static")

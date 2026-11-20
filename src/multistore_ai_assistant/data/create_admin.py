@@ -53,7 +53,7 @@ def main(argv: list[str]) -> int:
             return 1
         if row and not reset:
             print(f"OK admin '{username}' já existe (a password não mudou; usa --reset-password).")
-            return 0
+            return _set_admin_email(conn, username)
 
         password = os.getenv("ADMIN_PASSWORD") if not args else None
         if not password:
@@ -76,6 +76,28 @@ def main(argv: list[str]) -> int:
                 "INSERT INTO users (username, password_hash, role, protected) VALUES (%s, %s, 'admin', true)",
                 (username, hashed))
             print(f"OK admin '{username}' criado. Entra em http://localhost:8001/login")
+        return _set_admin_email(conn, username)
+
+
+def _set_admin_email(conn, username: str) -> int:
+    """ADMIN_EMAIL (opcional) → email do admin, para poder recuperar a password por email."""
+    from multistore_ai_assistant.api.permissions import AccessDenied
+    from multistore_ai_assistant.api.users import normalize_email
+
+    raw = os.getenv("ADMIN_EMAIL", "").strip()
+    if not raw:
+        return 0
+    try:
+        email = normalize_email(raw)
+    except AccessDenied:
+        print("ADMIN_EMAIL inválido: o email do admin não mudou.")
+        return 1
+    try:
+        conn.execute("UPDATE users SET email = %s WHERE username = %s", (email, username))
+    except psycopg.errors.UniqueViolation:
+        print("ADMIN_EMAIL já pertence a outra conta: o email do admin não mudou.")
+        return 1
+    print(f"OK email do admin '{username}' definido.")
     return 0
 
 

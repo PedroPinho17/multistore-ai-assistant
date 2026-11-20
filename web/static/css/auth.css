@@ -39,6 +39,13 @@
 .auth-tools { display: flex; align-items: center; gap: 6px; }
 .link-btn { background: none; color: var(--brand); padding: 4px 6px; font-size: 16px; }
 
+/* Esqueceu-se da password? / nova password */
+.auth-link { display: inline-block; margin: 14px 0 0; padding: 4px 0; font-size: 14px; font-weight: 500; text-decoration: none; }
+.auth-link:hover { text-decoration: underline; opacity: 1; }
+.auth-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.auth-form .ok-msg { margin: 0 0 4px; line-height: 1.5; }
+.auth-cta { display: block; width: 100%; text-align: center; text-decoration: none; color: #fff; margin-top: 18px; }
+
 /* ---------- Seletor de idioma com bandeiras ---------- */
 .lang-picker { position: relative; }
 .lp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px; background: var(--surface);

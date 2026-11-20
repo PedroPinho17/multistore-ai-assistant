@@ -28,7 +28,7 @@ def users_options(user: dict = Depends(users_user)):
 def users_create(body: NewUserIn, user: dict = Depends(users_user)):
     """Cria uma conta do mesmo nível ou abaixo."""
     created = users_db.create_user(user, body.username, body.password, body.role,
-                                   body.brand_id, body.store_id, body.modules)
+                                   body.brand_id, body.store_id, body.modules, body.email)
     log.info("Conta %r (%s) criada por %r", created["username"], created["role"], user["username"])
     return created
 
@@ -36,7 +36,7 @@ def users_create(body: NewUserIn, user: dict = Depends(users_user)):
 @router.patch("/{user_id}")
 def users_update(user_id: int, body: UserPatchIn, user: dict = Depends(users_user)):
     """Altera módulos, ativa/desativa ou repõe a password de uma conta gerida."""
-    updated = users_db.update_user(user, user_id, body.modules, body.active, body.password)
+    updated = users_db.update_user(user, user_id, body.modules, body.active, body.password, body.email)
     log.info("Conta %r alterada por %r", updated["username"], user["username"])
     return updated
 

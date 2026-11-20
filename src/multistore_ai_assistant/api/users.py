@@ -30,12 +30,34 @@ from multistore_ai_assistant.api.profile import PasswordError, check_new_passwor
 from multistore_ai_assistant.db.pool import connection
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,32}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")      # a mesma regra que users_email_check (V011)
+
+
+def normalize_email(email: str | None) -> str | None:
+    """Email limpo (sem espaços, domínio em minúsculas) ou ``None`` se vazio; recusa formatos inválidos."""
+    email = (email or "").strip()
+    if not email:
+        return None
+    if len(email) > 254 or not EMAIL_RE.match(email):
+        raise AccessDenied("bad_email", "Email inválido.", 400)
+    local, domain = email.rsplit("@", 1)
+    return f"{local}@{domain.lower()}"
+
+
+def set_email(conn, user_id: int, email: str | None) -> None:
+    """Grava o email de uma conta (erros de BD → mensagens claras)."""
+    try:
+        conn.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
+    except psycopg.errors.UniqueViolation:
+        raise AccessDenied("email_taken", "Esse email já está associado a outra conta.", 409) from None
+    except psycopg.errors.CheckViolation:
+        raise AccessDenied("demo_no_email", "As contas de demonstração não têm email.", 400) from None
 
 SELECT_USERS = """
     SELECT u.id, u.username, u.role, u.brand_id, u.store_id, s.brand_id AS store_brand,
            u.modules, u.active, u.protected, u.created_by, c.username AS created_by_name,
            u.created_at, u.last_login, coalesce(b.name, sb.name) AS brand_name, s.name AS store_name,
-           u.avatar
+           u.avatar, u.email
     FROM users u
     LEFT JOIN stores s  ON s.id = u.store_id
     LEFT JOIN brands b  ON b.id = u.brand_id
@@ -106,13 +128,14 @@ def options(actor: dict) -> dict:
 
 def create_user(actor: dict, username: str, password: str, role: str,
                 brand_id: int | None = None, store_id: int | None = None,
-                modules: list[str] | None = None) -> dict:
+                modules: list[str] | None = None, email: str | None = None) -> dict:
     """Cria uma conta do mesmo nível ou abaixo, dentro do âmbito de quem atua."""
     require_not_demo(actor)
     username = username.strip().lower()
     if not USERNAME_RE.match(username):
         raise AccessDenied("bad_username", "Nome de utilizador inválido (3–32: letras, números, . _ -).", 400)
     _password_ok(username, password)
+    email = normalize_email(email)
     with connection("owner") as conn:
         store_brand = None
         if store_id:
@@ -130,11 +153,13 @@ def create_user(actor: dict, username: str, password: str, role: str,
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         try:
             new_id = conn.execute(
-                """INSERT INTO users (username, password_hash, role, brand_id, store_id, modules, created_by)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-                (username, hashed, role, brand_id or None, store_id or None, final_modules, actor["id"]),
+                """INSERT INTO users (username, password_hash, role, brand_id, store_id, modules, created_by, email)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (username, hashed, role, brand_id or None, store_id or None, final_modules, actor["id"], email),
             ).fetchone()[0]
-        except psycopg.errors.UniqueViolation:
+        except psycopg.errors.UniqueViolation as e:
+            if e.diag.constraint_name == "users_email_key":
+                raise AccessDenied("email_taken", "Esse email já está associado a outra conta.", 409) from None
             raise AccessDenied("username_taken", "Esse nome de utilizador já existe.", 409) from None
         return _get(conn, new_id)
 
@@ -151,11 +176,13 @@ def _target(conn, actor: dict, user_id: int) -> dict:
 
 
 def update_user(actor: dict, user_id: int, modules: list[str] | None = None,
-                active: bool | None = None, password: str | None = None) -> dict:
-    """Altera módulos, estado (ativa/desativada) e/ou repõe a password."""
+                active: bool | None = None, password: str | None = None, email: str | None = None) -> dict:
+    """Altera módulos, estado (ativa/desativada), email (``""`` tira-o) e/ou repõe a password."""
     require_not_demo(actor)
     with connection("owner") as conn:
         target = _target(conn, actor, user_id)
+        if email is not None:
+            set_email(conn, user_id, normalize_email(email))
         if modules is not None:
             final = check_modules(actor, target["role"], modules)
             conn.execute("UPDATE users SET modules = %s WHERE id = %s", (final, user_id))
