@@ -1,0 +1,43 @@
+/* Variáveis (cores, sombras, temas), estilos base e botões */
+:root {
+  --bg: #f6f7f5; --bg-grad: none;
+  --surface: #ffffff; --surface-2: #f2f4f2; --border: #e2e6e3;
+  --text: #18201c; --muted: #56605b;
+  --brand: #0f7a5a; --brand-2: #0b6b4e; --brand-soft: #e6f4ee;
+  /* Botões: verde-garrafa sólido com texto branco (contraste AA nos dois temas) */
+  --btn: #0f7a5a; --btn-2: #0b6b4e;
+  --user: #0f7a5a; --user-text: #fff;
+  --danger: #b91c1c; --danger-soft: #fef2f2; --ok: #047857;
+  --code-bg: #101614; --code-text: #a7f3d0;
+  --shadow: 0 1px 2px rgba(16,24,20,.05), 0 4px 14px rgba(16,24,20,.05);
+}
+[data-theme="dark"] {
+  --bg: #0c0f0e; --bg-grad: none;
+  --surface: #141a18; --surface-2: #1b2320; --border: #27312d;
+  --text: #e6ebe8; --muted: #9aa7a1;
+  --brand: #4cc79b; --brand-2: #38b386; --brand-soft: #133027;
+  --danger: #f87171; --danger-soft: #2a1515; --ok: #34d399;
+  --code-bg: #090c0b;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-family: "Inter", system-ui, sans-serif; background: var(--bg); background-image: var(--bg-grad);
+       background-attachment: fixed; color: var(--text); transition: background-color .3s, color .3s; }
+button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 9px 16px;
+         background: var(--btn); color: #fff; transition: transform .1s, opacity .2s, background .2s; }
+button:hover:not(:disabled) { opacity: .92; }
+button:active:not(:disabled) { transform: scale(.97); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.icon-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 7px 11px; }
+.icon-btn:hover { color: var(--text); background: var(--surface-2); }
+.lang-select { cursor: pointer; font: inherit; border-radius: 8px; }
+.lang-select option { color: #111; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* top/left: sem eles o elemento fica na posição "estática" (p.ex. por baixo de todas as mensagens
+   do chat) e estica o documento, o que faz a página inteira deslocar-se */
+.sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+           clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.error { color: var(--danger); font-size: 14px; }
+.shake { animation: shake .4s; }

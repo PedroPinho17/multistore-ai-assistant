@@ -1,0 +1,9 @@
+﻿@import './base.css';
+@import './common.css';
+@import './auth.css';
+@import './shell.css';
+@import './chat.css';
+@import './dialogs.css';
+
+html, body, #app { height: 100%; }
+body { margin: 0; }

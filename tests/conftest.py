@@ -6,6 +6,7 @@
 - @pytest.mark.model: precisam dos modelos treinados em models/.
 """
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -21,6 +22,12 @@ for key, value in {
     "READONLY_DATABASE_URL": "postgresql://assistente:x@localhost:5433/multistore",
 }.items():
     os.environ.setdefault(key, value)
+
+# SPA /app: fixture mínima para os testes unitários (antes de importar api.main)
+os.environ.setdefault(
+    "VUE_APP_DIR",
+    str(Path(__file__).resolve().parent / "fixtures" / "vue_dist"),
+)
 
 import pytest  # noqa: E402
 

@@ -1,4 +1,5 @@
-# O Dockerfile só copia pyproject.toml, uv.lock, README.md, src/, db/, web/, data/ e docker/.
+# O Dockerfile copia pyproject.toml, uv.lock, README.md, src/, db/, web/, data/, docker/
+# e frontend/ (build multi-stage Node → dist em /app).
 # Tudo o resto fica fora do contexto de build: mais rápido (models/ tem ~3 GB) e nunca
 # envia segredos (.env, backups da BD) ao daemon do Docker.
 
@@ -28,6 +29,13 @@ data/avatars/
 .coverage
 htmlcov/
 
+# Frontend: o stage Node faz npm ci; não enviar node_modules/dist locais
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/**/.vite/
+
+
 # Não são precisos na imagem
 .git/
 .github/
@@ -36,3 +44,4 @@ htmlcov/
 tests/
 notebooks/
 docs/
+

@@ -104,6 +104,58 @@ def test_unknown_path_is_not_the_app():
     assert client.get("/nao-existe", headers=HTML).status_code == 404
 
 
+@pytest.mark.parametrize("path", ["/app/", "/app/chat", "/app/login", "/app/reset-password"])
+def test_vue_spa_serves_index_for_client_routes(path):
+    """F5 em /app/chat (e afins) devolve o index.html do Vite, não 404."""
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert 'id="app"' in r.text
+    assert r.headers["cache-control"] == "no-cache"
+    # CSP estrita da SPA: sem jsdelivr / unsafe-eval / scripts inline
+    csp = r.headers["content-security-policy"]
+    assert "jsdelivr" not in csp and "unsafe-eval" not in csp and "unsafe-inline" not in csp.split("script-src")[1].split(";")[0]
+
+
+@pytest.mark.parametrize("path", ["/app/assets/missing.js", "/app/assets/foo", "/app/assets/",
+                                  "/app/assets", "/app/assets/sub/x", "/app/assets/sub/"])
+def test_vue_spa_unknown_asset_is_404_never_the_index(path):
+    """Em /app/assets/ não há fallback: nunca o index.html (que ficaria em cache um ano)."""
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 404
+    assert 'id="app"' not in r.text
+    assert r.headers["cache-control"] == "no-cache"
+
+
+def test_vue_spa_asset_revalidation_keeps_the_long_cache():
+    etag = client.get("/app/assets/ok.js").headers["etag"]
+    r = client.get("/app/assets/ok.js", headers={"If-None-Match": etag})
+    assert r.status_code == 304
+    assert "immutable" in r.headers["cache-control"]
+
+
+def test_vue_spa_existing_asset_is_immutable():
+    r = client.get("/app/assets/ok.js")
+    assert r.status_code == 200
+    assert "immutable" in r.headers["cache-control"]
+    assert "max-age=31536000" in r.headers["cache-control"]
+
+
+def test_vue_spa_path_match_is_exact():
+    """/appointments não é tratado como /app."""
+    r = client.get("/appointments", headers=HTML)
+    assert r.status_code == 404
+    # UI antiga mantém jsDelivr na CSP
+    assert "jsdelivr" in client.get("/", headers=HTML).headers["content-security-policy"]
+
+
+def test_static_and_api_are_not_spa_fallback():
+    assert client.get("/static/js/app.js").status_code == 200
+    assert client.get("/health").json() == {"ok": True}
+    # Pedido API com o mesmo prefixo de uma rota de página continua JSON 401
+    r = client.get("/profile", headers={**HTML, "Authorization": "Bearer x"})
+    assert r.status_code == 401 and r.headers["content-type"].startswith("application/json")
+
+
 def test_api_responses_are_not_cached():
     assert client.get("/health").headers["cache-control"] == "no-store"
 

@@ -104,10 +104,13 @@ def test_pdf_unknown_conversation_is_404(conv):
     assert client.get("/conversations/999/pdf", headers=bearer()).status_code == 404
 
 
-def test_pdf_has_its_own_rate_limit(conv, nothing_runs):
+def test_pdf_has_its_own_rate_limit(conv, nothing_runs, monkeypatch):
+    # A lista é simulada: um teste unitário não pode precisar do Postgres (no CI não há BD)
+    patch_route(monkeypatch, "list_conversations", lambda u: [{"id": 7, "title": "Vendas"}])
     codes = [client.get("/conversations/7/pdf", headers=bearer()).status_code for _ in range(6)]
     assert codes == [200] * 5 + [429]
-    assert client.get("/conversations", headers=bearer()).status_code != 429   # o resto das conversas não é afetado
+    r = client.get("/conversations", headers=bearer())   # o resto das conversas não é afetado
+    assert r.status_code == 200 and r.json() == [{"id": 7, "title": "Vendas"}]
 
 
 # ---------- conteúdo ----------

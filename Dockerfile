@@ -1,3 +1,13 @@
+# ---- Stage 1: Vue SPA (Vite) ----
+FROM node:22-bookworm-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ---- Stage 2: API + chat ----
 # Imagem da aplicação (API + chat). A base de dados é o serviço "db" do docker-compose.
 FROM python:3.13-slim
 
@@ -19,24 +29,24 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 # 1.º só as dependências (camada em cache enquanto o uv.lock não mudar).
-# No Linux o torch vem do índice CPU (ver [tool.uv.sources] no pyproject.toml).
 COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
-# 2.º o código
-COPY src ./src
-COPY db ./db
-COPY web ./web
-COPY data ./data
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-# Modelo de embeddings (RAG + classificador MiniLM) dentro da imagem:
-# a app arranca sem descarregar nada e funciona mesmo com HF_HUB_OFFLINE=1
+# Modelo de embeddings: antes de copiar src/ e o dist, para mudanças de código não o refazerem
 RUN HF_HUB_OFFLINE=0 python -c "from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+
+# 2.º o pacote Python (antes de web/data/dist: mudanças nesses não reinstalamos o projeto)
+COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+COPY db ./db
+COPY web ./web
+COPY data ./data
+COPY --from=frontend /frontend/dist ./frontend/dist
 
 COPY docker/entrypoint.sh /entrypoint.sh
 
