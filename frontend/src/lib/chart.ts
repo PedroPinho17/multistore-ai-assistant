@@ -1,31 +1,10 @@
-import {
-  Chart,
-  BarController,
-  LineController,
-  BarElement,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  Filler,
-  Tooltip,
-} from 'chart.js'
+// Chat charts. This whole module is loaded with import() by the chat store, so the static
+// import of Chart.js below stays out of the start-up bundle.
+import { Chart } from '@/lib/chartjs'
 import { colName } from '@/lib/format'
 import { labelCol } from '@/lib/chart-data'
 import type { Lang } from '@/i18n/types'
 import type { ChatMessage } from '@/api/types'
-
-Chart.register(
-  BarController,
-  LineController,
-  BarElement,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  Filler,
-  Tooltip,
-)
 
 const charts = new Map<number, Chart>()
 

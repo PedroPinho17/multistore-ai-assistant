@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { prefs } from '@/lib/storage'
-import { detectLang, MESSAGES, t as messages } from '@/i18n'
+import { prefs, sessionStore } from '@/lib/storage'
+import { detectLang, isLang, isLoaded, loadLang, t as messages } from '@/i18n'
 import type { Lang, MessageTree } from '@/i18n/types'
 import type { AppConfig, Theme, ThemePref, ToastType } from '@/api/types'
 import { api } from '@/api/client'
+import { applyAccent, type AccentValue } from '@/lib/accent'
 
 export interface ToastItem {
   id: number
@@ -41,6 +42,7 @@ export const useUiStore = defineStore('ui', () => {
       : 'system',
   )
   const theme = ref<Theme>(resolveTheme(themePref.value))
+  const accent = ref<string | null>(prefs.get('accent'))
   const sidebarOpen = ref(false)
   const userMenu = ref(false)
   const toasts = ref<ToastItem[]>([])
@@ -50,27 +52,68 @@ export const useUiStore = defineStore('ui', () => {
     default_lang: 'pt',
     show_demo_accounts: true,
   })
+  const pageTitle = ref('')
+  const pageSub = ref('')
+  const topbarActions = ref<'chat' | 'dashboard' | 'users' | 'review' | 'admin' | 'none'>('none')
 
   const t = computed<MessageTree>(() => messages(lang.value))
   const showDemo = computed(() => appConfig.value.show_demo_accounts !== false)
+  const effectiveAccent = computed<AccentValue>(
+    () => accent.value || appConfig.value.default_accent || 'green',
+  )
 
   function applyTheme() {
     theme.value = resolveTheme(themePref.value)
   }
 
-  function setTheme(v: ThemePref) {
+  function hasToken() {
+    return !!sessionStore.get('token')
+  }
+
+  function setTheme(v: ThemePref, persist = true) {
     themePref.value = v
     prefs.set('theme', v)
     applyTheme()
+    if (persist) void saveSetting({ theme: v }, hasToken())
   }
 
   function toggleTheme() {
     setTheme(theme.value === 'dark' ? 'light' : 'dark')
   }
 
-  function setLang(l: Lang) {
-    lang.value = l
+  let langRequest = 0
+
+  /**
+   * Shows `l`. The texts of a language not yet loaded are downloaded first; meanwhile the
+   * current language stays on screen. Only the last request wins (fast double switch).
+   */
+  async function showLang(l: Lang): Promise<void> {
+    if (!isLang(l)) return
+    const req = ++langRequest
+    if (isLoaded(l)) {
+      lang.value = l
+      return
+    }
+    try {
+      await loadLang(l)
+      if (req === langRequest) lang.value = l
+    } catch {
+      if (req === langRequest) toast(t.value.network)
+    }
+  }
+
+  function setLang(l: Lang, persist = true): Promise<void> {
+    if (!isLang(l)) return Promise.resolve()
     prefs.set('lang', l)
+    if (persist) void saveSetting({ lang: l }, hasToken())
+    return showLang(l)
+  }
+
+  function setAccent(a: string | null, persist = true) {
+    accent.value = a
+    if (a) prefs.set('accent', a)
+    else prefs.del('accent')
+    if (persist) void saveSetting({ accent: a }, hasToken())
   }
 
   function toast(text: string, type: ToastType = 'error') {
@@ -111,9 +154,7 @@ export const useUiStore = defineStore('ui', () => {
       ).json()
       appConfig.value = { ...appConfig.value, ...cfg }
       const dl = cfg.default_lang
-      if (!prefs.get('lang') && typeof dl === 'string' && dl in MESSAGES) {
-        lang.value = dl as Lang
-      }
+      if (!prefs.get('lang') && isLang(dl)) await showLang(dl)
     } catch {
       /* offline / no backend */
     }
@@ -123,16 +164,51 @@ export const useUiStore = defineStore('ui', () => {
     if (!hasToken) return
     try {
       await api('/settings/me', changes, 'PUT')
-    } catch {
-      /* ignore in part 1 */
+    } catch (e) {
+      const err = e as { status?: number; message?: string }
+      if (err.status !== 401) toast(err.message || String(e))
     }
+  }
+
+  async function resetSettings(hasToken: boolean) {
+    if (hasToken) {
+      try {
+        await api('/settings/me', { lang: null, theme: null, accent: null }, 'PUT')
+      } catch {
+        /* ignore */
+      }
+    }
+    for (const k of ['lang', 'theme', 'accent']) prefs.del(k)
+    accent.value = null
+    themePref.value = 'system'
+    applyTheme()
+    const dl = appConfig.value.default_lang
+    if (isLang(dl)) await showLang(dl)
+    toast(t.value.st.resetDone, 'ok')
+  }
+
+  function setPageMeta(
+    title: string,
+    sub = '',
+    actions: typeof topbarActions.value = 'none',
+  ) {
+    pageTitle.value = title
+    pageSub.value = sub
+    topbarActions.value = actions
   }
 
   watch(
     theme,
     v => {
       document.documentElement.dataset.theme = v
+      applyAccent(effectiveAccent.value, v)
     },
+    { immediate: true },
+  )
+
+  watch(
+    effectiveAccent,
+    a => applyAccent(a, theme.value),
     { immediate: true },
   )
 
@@ -154,22 +230,30 @@ export const useUiStore = defineStore('ui', () => {
     lang,
     themePref,
     theme,
+    accent,
+    effectiveAccent,
     sidebarOpen,
     userMenu,
     toasts,
     dialog,
     appConfig,
+    pageTitle,
+    pageSub,
+    topbarActions,
     t,
     showDemo,
     applyTheme,
     setTheme,
     toggleTheme,
     setLang,
+    setAccent,
     toast,
     dismissToast,
     confirmDialog,
     closeDialog,
     loadConfig,
     saveSetting,
+    resetSettings,
+    setPageMeta,
   }
 })

@@ -4,6 +4,8 @@
 @import './shell.css';
 @import './chat.css';
 @import './dialogs.css';
+@import './home.css';
+@import './pages.css';
 
 html, body, #app { height: 100%; }
 body { margin: 0; }

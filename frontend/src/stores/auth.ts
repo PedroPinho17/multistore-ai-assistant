@@ -4,6 +4,7 @@ import { api, configureApi } from '@/api/client'
 import type { LoginResponse, User, UserSettings } from '@/api/types'
 import { ApiError } from '@/api/types'
 import { sessionStore } from '@/lib/storage'
+import { clearAvatarCache } from '@/lib/avatar'
 import { useUiStore } from '@/stores/ui'
 import type { Lang, Scope } from '@/i18n/types'
 import type { Router } from 'vue-router'
@@ -82,8 +83,9 @@ export const useAuthStore = defineStore('auth', () => {
   function applyUserSettings(st?: UserSettings | null) {
     if (!st) return
     const ui = useUiStore()
-    if (st.lang) ui.setLang(st.lang)
-    if (st.theme) ui.setTheme(st.theme)
+    if (st.lang) ui.setLang(st.lang, false)
+    if (st.theme) ui.setTheme(st.theme, false)
+    if (st.accent) ui.setAccent(st.accent, false)
   }
 
   async function refreshMe() {
@@ -139,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     sessionStore.del('token')
     sessionStore.del('user')
+    clearAvatarCache() // the photos stay in memory as data URLs: not for the next account
     void import('@/stores/chat')
       .then(({ useChatStore }) => {
         try {
@@ -239,8 +242,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function persistLangSetting(l: Lang) {
     const ui = useUiStore()
-    ui.setLang(l)
-    if (token.value) void ui.saveSetting({ lang: l }, true)
+    ui.setLang(l, !!token.value)
   }
 
   return {

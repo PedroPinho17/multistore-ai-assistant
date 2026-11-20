@@ -95,6 +95,171 @@ export interface AppConfig {
   show_demo_accounts: boolean
 }
 
+export interface ProfileStats {
+  conversations: number
+  questions: number
+  last_activity?: string | null
+  first_activity?: string | null
+  by_kind?: Record<string, number>
+}
+
+export interface ProfileData {
+  email?: string | null
+  brand_name?: string | null
+  store_name?: string | null
+  visible_stores?: number
+  stats: ProfileStats
+}
+
+export interface DashboardData {
+  revenue?: {
+    this_month_to_date: number
+    last_month_same_days: number
+    change_pct: number | null
+    days: number
+  }
+  top_stores?: { store: string; revenue: number }[]
+  margin_by_brand?: { brand: string; margin: number | null }[]
+  margin_excluded_items?: number
+  forecast_7d?: { rows: [string, number][] }
+}
+
+export interface ManagedUser {
+  id: number
+  username: string
+  role: Role
+  modules: string[]
+  active: boolean
+  email?: string | null
+  brand_name?: string | null
+  store_name?: string | null
+  brand_id?: number | null
+  store_id?: number | null
+  last_login?: string | null
+  created_by_name?: string | null
+  is_me?: boolean
+  protected?: boolean
+  can_manage?: boolean
+  avatar_url?: string | null
+}
+
+export interface UsersOptions {
+  roles: Role[]
+  brands: { id: number; name: string }[]
+  stores: { id: number; name: string; brand_id: number }[]
+  modules: Record<string, string[]>
+  defaults: Record<string, string[]>
+}
+
+export interface AppSettingsMeta {
+  values: {
+    default_accent: string
+    default_lang: Lang
+    show_demo_accounts: boolean
+    session_hours: number
+  }
+  options: { session_hours: number[] }
+  updated_at?: string | null
+  updated_by?: string | null
+}
+
+export interface AdminMetrics {
+  summary: {
+    requests: number
+    users: number
+    errors: number
+    error_rate: number
+    p50_ms: number | null
+    p95_ms: number | null
+    avg_tokens: number
+    prompt_tokens: number
+    completion_tokens: number
+    satisfaction: number | null
+    thumbs_up: number
+    thumbs_down: number
+    sql_fail_rate: number
+    sql_recovered: number
+    classifier_share: number
+    cache_share: number
+    cache_hits: number
+  }
+  daily: { day: string; requests: number; errors: number }[]
+  by_intent: { intent: string; n: number }[]
+  by_kind: {
+    kind: string
+    n: number
+    avg_ms: number
+    p95_ms: number
+    avg_tokens: number
+  }[]
+  top_questions: { question: string; n: number; errors?: number; up?: number; down?: number }[]
+  thumbs_down: {
+    id: number
+    question: string
+    username: string
+    created_at: string
+    kind: string
+  }[]
+  recent_errors: {
+    id: number
+    question: string
+    username: string
+    created_at: string
+    kind: string
+    duration_ms?: number
+    error?: string
+  }[]
+  by_user: {
+    username: string
+    role: string
+    requests: number
+    errors?: number
+    tokens: number
+    last_at: string
+  }[]
+  eval_history: {
+    file: string
+    date: string
+    model: string
+    level: string
+    runs: number
+    accuracy: number | null
+    source?: string
+  }[]
+}
+
+export interface ReviewItem {
+  id: number
+  question: string
+  answer?: string | null
+  error?: string | null
+  sql?: string | null
+  username: string
+  role: string
+  created_at: string
+  can_teach: boolean
+  follow_up?: boolean
+  draftQuestion: string
+  draftSql: string
+  preview: { columns: string[]; rows: unknown[][]; row_count: number } | null
+  testedSql: string | null
+  busy: string
+  err: string
+}
+
+export interface ExampleItem {
+  id: number
+  question: string
+  sql: string
+  source: string
+  created_by?: string | null
+  updated_by?: string | null
+  updated_at?: string | null
+  uses: number
+  last_used_at?: string | null
+  open: boolean
+}
+
 export interface DemoAccount {
   user: string
   pass: string

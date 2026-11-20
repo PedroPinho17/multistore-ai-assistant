@@ -81,7 +81,7 @@ export const useChatStore = defineStore('chat', () => {
     const auth = useAuthStore()
     const ui = useUiStore()
     return (ui.t.starters[auth.scope] || [])
-      .filter(([mod]) => auth.hasModule(mod))
+      .filter((pair): pair is [string, string] => !!pair[0] && auth.hasModule(pair[0]))
       .map(([, q]) => q)
   })
 
@@ -665,6 +665,23 @@ export const useChatStore = defineStore('chat', () => {
     editTitle.value = ''
   }
 
+  /**
+   * Every conversation was deleted (profile page): empty the list and the open chat, but
+   * unlike reset() never touch a request in progress. Refuses (false) while an answer is
+   * streaming: its conversation would be deleted under it.
+   */
+  function forgetConversations(): boolean {
+    if (loading.value || streaming.value) return false
+    withLoadedCharts(m => m.clearCharts())
+    messages.value = []
+    conversations.value = []
+    currentConv.value = null
+    welcomeDone.value = false
+    editingId.value = null
+    editTitle.value = ''
+    return true
+  }
+
   const ui = useUiStore()
   const auth = useAuthStore()
   // Logout limpa o token sem import estático do chat: abort/reset sync aqui.
@@ -731,6 +748,7 @@ export const useChatStore = defineStore('chat', () => {
       withLoadedCharts(api => api.redrawCharts(msgs ?? messages.value, useUiStore().lang))
     },
     reset,
+    forgetConversations,
     botFields,
     addBot,
   }

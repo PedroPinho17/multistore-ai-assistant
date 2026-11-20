@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LangPicker from '@/components/LangPicker.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { useDashboardStore } from '@/stores/dashboard'
+import { useAdminStore } from '@/stores/admin'
+import { useReviewStore } from '@/stores/review'
+import { useUsersStore } from '@/stores/users'
 import { useUiStore } from '@/stores/ui'
 import type { Lang } from '@/i18n/types'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const chat = useChatStore()
+const dash = useDashboardStore()
+const adm = useAdminStore()
+const review = useReviewStore()
+const users = useUsersStore()
 const ui = useUiStore()
 const { user } = storeToRefs(auth)
 const {
@@ -22,14 +31,19 @@ const {
   loading,
   streaming,
   exportingPdf,
-  pageTitle,
 } = storeToRefs(chat)
-const { t, theme, lang, sidebarOpen, userMenu } = storeToRefs(ui)
+const { t, theme, lang, sidebarOpen, userMenu, pageTitle, pageSub, topbarActions } =
+  storeToRefs(ui)
+const { pending } = storeToRefs(review)
 
 const railEl = ref<HTMLElement | null>(null)
 const menuBtn = ref<HTMLButtonElement | null>(null)
 const isMobile = ref(false)
 let mobileMq: MediaQueryList | null = null
+
+const view = computed(() => String(route.name || ''))
+const showRecents = computed(() => view.value === 'chat')
+const brandTo = computed(() => (auth.token ? '/chat' : '/'))
 
 function setLang(l: Lang) {
   auth.persistLangSetting(l)
@@ -78,6 +92,7 @@ onMounted(() => {
   mobileMq.addEventListener('change', syncMobile)
   document.addEventListener('click', onDocClick)
   document.addEventListener('keydown', onEsc)
+  void review.loadCount()
 })
 onUnmounted(() => {
   mobileMq?.removeEventListener('change', syncMobile)
@@ -97,10 +112,10 @@ onUnmounted(() => {
       :aria-hidden="isMobile && !sidebarOpen ? 'true' : undefined"
     >
       <div class="rail-top">
-        <a href="/app/chat" class="rail-brand" :title="t.h.home" @click.prevent>
+        <RouterLink :to="brandTo" class="rail-brand" :title="t.h.home" @click="ui.sidebarOpen = false">
           <svg class="logo-mark" aria-hidden="true"><use href="#logo" /></svg>
           <span>Multistore AI</span>
-        </a>
+        </RouterLink>
         <button
           type="button"
           class="icon-only rail-close"
@@ -115,14 +130,85 @@ onUnmounted(() => {
           to="/chat"
           class="nav-item"
           active-class="active"
-          :aria-current="$route.name === 'chat' ? 'page' : undefined"
+          :aria-current="view === 'chat' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
         >
           <svg class="i" aria-hidden="true"><use href="#i-chat" /></svg>
           <span>{{ t.nav.chat }}</span>
         </RouterLink>
+        <RouterLink
+          v-if="auth.hasModule('sql') || auth.hasModule('forecast')"
+          to="/dashboard"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'dashboard' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-trend" /></svg>
+          <span>{{ t.nav.dashboard }}</span>
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasModule('users')"
+          to="/users"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'users' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-users" /></svg>
+          <span>{{ t.nav.users }}</span>
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasModule('teach')"
+          to="/review"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'review' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-teach" /></svg>
+          <span>{{ t.nav.review }}</span>
+          <span
+            v-if="pending"
+            class="nav-count"
+            :aria-label="t.rv.pending(pending)"
+            >{{ pending > 99 ? '99+' : pending }}</span
+          >
+        </RouterLink>
+        <RouterLink
+          v-if="auth.hasModule('observability')"
+          to="/admin"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'admin' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-chart" /></svg>
+          <span>{{ t.nav.admin }}</span>
+        </RouterLink>
+        <RouterLink
+          to="/profile"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'profile' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-user" /></svg>
+          <span>{{ t.nav.profile }}</span>
+        </RouterLink>
+        <RouterLink
+          to="/settings"
+          class="nav-item"
+          active-class="active"
+          :aria-current="view === 'settings' ? 'page' : undefined"
+          @click="ui.sidebarOpen = false"
+        >
+          <svg class="i" aria-hidden="true"><use href="#i-settings" /></svg>
+          <span>{{ t.nav.settings }}</span>
+        </RouterLink>
       </nav>
 
-      <div class="rail-section">
+      <div v-if="showRecents" class="rail-section">
         <div class="recents-title">{{ t.recents }}</div>
         <div class="conv-list">
           <div
@@ -180,6 +266,7 @@ onUnmounted(() => {
           <div v-if="!conversations.length" class="conv-empty">{{ t.noChats }}</div>
         </div>
       </div>
+      <div v-else class="rail-spacer"></div>
 
       <div class="rail-user">
         <div
@@ -228,6 +315,22 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
+          <RouterLink
+            to="/settings"
+            role="menuitem"
+            class="menu-item"
+            @click="ui.userMenu = false"
+          >
+            <svg class="i" aria-hidden="true"><use href="#i-settings" /></svg> {{ t.nav.settings }}
+          </RouterLink>
+          <RouterLink
+            to="/profile"
+            role="menuitem"
+            class="menu-item"
+            @click="ui.userMenu = false"
+          >
+            <svg class="i" aria-hidden="true"><use href="#i-user" /></svg> {{ t.nav.profile }}
+          </RouterLink>
           <button
             type="button"
             role="menuitem"
@@ -271,34 +374,97 @@ onUnmounted(() => {
         </button>
         <div class="topbar-title">
           <h1>{{ pageTitle }}</h1>
-          <p>{{ t.title }}</p>
+          <p v-if="pageSub">{{ pageSub }}</p>
         </div>
         <div class="topbar-actions">
-          <span class="status" :class="{ busy: loading || streaming }">{{
-            loading || streaming ? t.typingShort : t.online
-          }}</span>
+          <template v-if="topbarActions === 'chat' || view === 'chat'">
+            <span class="status" :class="{ busy: loading || streaming }">{{
+              loading || streaming ? t.typingShort : t.online
+            }}</span>
+            <button
+              v-if="currentConv"
+              type="button"
+              class="btn-soft sm"
+              :disabled="exportingPdf"
+              :aria-label="t.exportPdf"
+              :title="t.exportPdf"
+              @click="chat.exportPdf()"
+            >
+              <span v-if="exportingPdf" class="spinner" aria-hidden="true"></span>
+              <svg v-else class="i" aria-hidden="true"><use href="#i-download" /></svg>
+              <span class="hide-sm">{{ t.exportPdf }}</span>
+            </button>
+            <button
+              type="button"
+              class="btn-soft sm"
+              :disabled="loading || streaming"
+              @click="chat.newConversation()"
+            >
+              <svg class="i" aria-hidden="true"><use href="#i-plus" /></svg>
+              <span class="hide-sm">{{ t.newChat }}</span>
+            </button>
+          </template>
+          <template v-else-if="topbarActions === 'dashboard' || view === 'dashboard'">
+            <button
+              type="button"
+              class="btn-soft sm icon-only"
+              :disabled="dash.loading"
+              :aria-label="t.dash.refresh"
+              :title="t.dash.refresh"
+              @click="dash.load()"
+            >
+              <span v-if="dash.loading" class="spinner" aria-hidden="true"></span>
+              <svg v-else class="i" aria-hidden="true"><use href="#i-refresh" /></svg>
+            </button>
+          </template>
           <button
-            v-if="currentConv"
+            v-else-if="
+              (topbarActions === 'users' || view === 'users') && !users.form && !user?.demo
+            "
             type="button"
-            class="btn-soft sm"
-            :disabled="exportingPdf"
-            :aria-label="t.exportPdf"
-            :title="t.exportPdf"
-            @click="chat.exportPdf()"
+            class="btn btn-primary sm"
+            :disabled="!users.options"
+            @click="users.openNewUser()"
           >
-            <span v-if="exportingPdf" class="spinner" aria-hidden="true"></span>
-            <svg v-else class="i" aria-hidden="true"><use href="#i-download" /></svg>
-            <span class="hide-sm">{{ t.exportPdf }}</span>
+            <svg class="i" aria-hidden="true"><use href="#i-plus" /></svg> {{ t.um.newBtn }}
           </button>
           <button
+            v-else-if="topbarActions === 'review' || view === 'review'"
             type="button"
-            class="btn-soft sm"
-            :disabled="loading || streaming"
-            @click="chat.newConversation()"
+            class="btn-soft sm icon-only"
+            :disabled="review.loading || review.exLoading"
+            :aria-label="t.rv.refresh"
+            :title="t.rv.refresh"
+            @click="review.reload()"
           >
-            <svg class="i" aria-hidden="true"><use href="#i-plus" /></svg>
-            <span class="hide-sm">{{ t.newChat }}</span>
+            <span v-if="review.loading" class="spinner" aria-hidden="true"></span>
+            <svg v-else class="i" aria-hidden="true"><use href="#i-refresh" /></svg>
           </button>
+          <template v-else-if="topbarActions === 'admin' || view === 'admin'">
+            <div class="segmented sm" role="group" :aria-label="t.adm.period">
+              <button
+                v-for="d in adm.dashDays"
+                :key="d"
+                type="button"
+                :aria-pressed="adm.days === d ? 'true' : 'false'"
+                :disabled="adm.loading"
+                @click="adm.load(d)"
+              >
+                {{ t.adm.days[d] }}
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn-soft sm icon-only"
+              :disabled="adm.loading"
+              :aria-label="t.adm.refresh"
+              :title="t.adm.refresh"
+              @click="adm.load()"
+            >
+              <span v-if="adm.loading" class="spinner" aria-hidden="true"></span>
+              <svg v-else class="i" aria-hidden="true"><use href="#i-refresh" /></svg>
+            </button>
+          </template>
         </div>
       </header>
 

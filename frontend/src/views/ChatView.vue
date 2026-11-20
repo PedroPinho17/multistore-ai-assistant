@@ -33,6 +33,14 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => [chat.pageTitle, ui.t.title] as const,
+  ([title, sub]) => {
+    ui.setPageMeta(title, sub, 'chat')
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   if (auth.token) await auth.refreshMe()
   if (!messages.value.length) chat.welcome()
