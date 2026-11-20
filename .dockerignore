@@ -1,0 +1,37 @@
+# O Dockerfile só copia pyproject.toml, uv.lock, README.md, src/, db/, web/, data/ e docker/.
+# Tudo o resto fica fora do contexto de build: mais rápido (models/ tem ~3 GB) e nunca
+# envia segredos (.env, backups da BD) ao daemon do Docker.
+
+# Segredos e dados privados
+.env
+.env.*
+!.env.example
+backup/
+*.dump
+*.pem
+*.key
+Contas-teste.txt
+COMO_CORRER*.txt
+
+# Grandes ou gerados (models/ e eval/ são montados como volumes pelo docker-compose)
+models/
+eval/
+*.zip
+*.joblib
+*.safetensors
+.venv/
+**/__pycache__/
+*.py[oc]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Não são precisos na imagem
+.git/
+.github/
+.vscode/
+.idea/
+tests/
+notebooks/
+docs/
