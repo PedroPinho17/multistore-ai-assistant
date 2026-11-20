@@ -90,6 +90,16 @@ SHORT = {
         "¿Qué productos debo promocionar o retirar de la carta?", "Quels produits dois-je promouvoir ou retirer de la carte ?",
         "Revenue by brand", "Yesterday's sales", "Top 5 products", "Maia revenue in October",
         "Tomato stock", "Average ticket in September", "Menu margins", "Best stores this month",
+        # Compras a fornecedores (histórico/estado), não sugestões de encomenda
+        "Que compras estão por receber?", "Quais as compras pendentes?", "Compras pendentes",
+        "Compras por receber", "Há compras em atraso?", "Que compras já foram recebidas?",
+        "Quanto gastei em compras em outubro?", "Total de compras este mês", "Compras ao fornecedor este mês",
+        "Quais as últimas compras feitas?", "Que encomendas a fornecedores estão pendentes?",
+        "Estado das compras do armazém", "Quantas compras fizemos em 2026?", "Valor das compras por fornecedor",
+        "Which purchases are still pending?", "Pending purchases", "Purchases not yet received",
+        "How much did we spend on purchases in October?", "Latest purchases", "Purchases by supplier",
+        "¿Qué compras están pendientes?", "¿Cuánto gastamos en compras este mes?",
+        "Quels achats sont en attente ?", "Combien avons-nous dépensé en achats ce mois-ci ?",
     ],
     "forecast": [
         "Previsão para amanhã", "Previsão de vendas", "Vendas da próxima semana", "Quanto vou vender?",
@@ -98,6 +108,12 @@ SHORT = {
     "orders": [
         "O que encomendar?", "Encomendas sugeridas", "Repor stock", "Lista de compras",
         "What to order?", "Suggested orders", "Restock", "Shopping list",
+        # Sugestões do que encomendar (futuro), para separar das compras já feitas
+        "O que devo encomendar amanhã?", "Sugere-me uma encomenda de ingredientes",
+        "Que ingredientes preciso de comprar?", "Quanto devo encomendar de tomate?",
+        "O que falta encomendar para a próxima semana?", "Faz-me uma encomenda para sexta",
+        "What should I order tomorrow?", "Suggest an ingredient order",
+        "¿Qué debo pedir para mañana?", "Que dois-je commander pour demain ?",
     ],
     "personal_data": [
         "NIF do Rui", "Qual o NIF do Rui?", "Morada do gerente", "Telefone da Ana", "NISS dos funcionários",

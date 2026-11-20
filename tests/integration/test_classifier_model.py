@@ -19,6 +19,9 @@ if backend() == "none":
     ("Apaga todas as vendas de ontem", "write"),
     ("Qual é a capital de França?", "off_topic"),
     ("Obrigado pela ajuda!", "chat"),
+    # Compras a fornecedores são dados, não sugestões de encomenda (antes: "orders" a 99,9 %)
+    ("Que compras estão por receber?", "data"),
+    ("Quais as compras pendentes?", "data"),
 ])
 def test_clear_questions(question, intent):
     predicted, conf = classify(question)

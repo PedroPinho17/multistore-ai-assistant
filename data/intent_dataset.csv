@@ -640,6 +640,15 @@ Margem dos menus,data,margem dos menus
 Lojas com mais vendas,data,lojas com mais vendas
 Turnos desta semana,data,turnos desta semana
 Compras de outubro,data,compras de outubro
+Que produtos devo promover ou retirar da carta?,data,que produtos devo promover ou retirar da carta?
+Que produtos devo promover?,data,que produtos devo promover?
+Que pratos devo tirar da carta?,data,que pratos devo tirar da carta?
+Em que produtos devo mexer no preço?,data,em que produtos devo mexer no preço?
+Que produtos devo destacar no menu?,data,que produtos devo destacar no menu?
+Which products should I promote or remove from the menu?,data,which products should i promote or remove from the menu?
+Which dishes should I drop from the menu?,data,which dishes should i drop from the menu?
+¿Qué productos debo promocionar o retirar de la carta?,data,¿qué productos debo promocionar o retirar de la carta?
+Quels produits dois-je promouvoir ou retirer de la carte ?,data,quels produits dois-je promouvoir ou retirer de la carte ?
 Revenue by brand,data,revenue by brand
 Yesterday's sales,data,yesterday's sales
 Top 5 products,data,top <n> products
@@ -648,6 +657,30 @@ Tomato stock,data,tomato stock
 Average ticket in September,data,average ticket in september
 Menu margins,data,menu margins
 Best stores this month,data,best stores this month
+Que compras estão por receber?,data,que compras estão por receber?
+Quais as compras pendentes?,data,quais as compras pendentes?
+Compras pendentes,data,compras pendentes
+Compras por receber,data,compras por receber
+Há compras em atraso?,data,há compras em atraso?
+Que compras já foram recebidas?,data,que compras já foram recebidas?
+Quanto gastei em compras em outubro?,data,quanto gastei em compras em outubro?
+Total de compras este mês,data,total de compras este mês
+Compras ao fornecedor este mês,data,compras ao fornecedor este mês
+Quais as últimas compras feitas?,data,quais as últimas compras feitas?
+Que encomendas a fornecedores estão pendentes?,data,que encomendas a fornecedores estão pendentes?
+Estado das compras do armazém,data,estado das compras do armazém
+Quantas compras fizemos em 2026?,data,quantas compras fizemos em <n>?
+Valor das compras por fornecedor,data,valor das compras por fornecedor
+Which purchases are still pending?,data,which purchases are still pending?
+Pending purchases,data,pending purchases
+Purchases not yet received,data,purchases not yet received
+How much did we spend on purchases in October?,data,how much did we spend on purchases in october?
+Latest purchases,data,latest purchases
+Purchases by supplier,data,purchases by supplier
+¿Qué compras están pendientes?,data,¿qué compras están pendientes?
+¿Cuánto gastamos en compras este mes?,data,¿cuánto gastamos en compras este mes?
+Quels achats sont en attente ?,data,quels achats sont en attente ?
+Combien avons-nous dépensé en achats ce mois-ci ?,data,combien avons-nous dépensé en achats ce mois-ci ?
 Previsão para amanhã,forecast,previsão para amanhã
 Previsão de vendas,forecast,previsão de vendas
 Vendas da próxima semana,forecast,vendas da próxima semana
@@ -664,6 +697,16 @@ What to order?,orders,what to order?
 Suggested orders,orders,suggested orders
 Restock,orders,restock
 Shopping list,orders,shopping list
+O que devo encomendar amanhã?,orders,o que devo encomendar amanhã?
+Sugere-me uma encomenda de ingredientes,orders,sugere-me uma encomenda de ingredientes
+Que ingredientes preciso de comprar?,orders,que ingredientes preciso de comprar?
+Quanto devo encomendar de tomate?,orders,quanto devo encomendar de tomate?
+O que falta encomendar para a próxima semana?,orders,o que falta encomendar para a próxima semana?
+Faz-me uma encomenda para sexta,orders,faz-me uma encomenda para sexta
+What should I order tomorrow?,orders,what should i order tomorrow?
+Suggest an ingredient order,orders,suggest an ingredient order
+¿Qué debo pedir para mañana?,orders,¿qué debo pedir para mañana?
+Que dois-je commander pour demain ?,orders,que dois-je commander pour demain ?
 NIF do Rui,personal_data,nif do rui
 Qual o NIF do Rui?,personal_data,qual o nif do rui?
 Morada do gerente,personal_data,morada do gerente

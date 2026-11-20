@@ -1,38 +1,36 @@
 Classificador de intenção: XLM-RoBERTa base (fine-tune)
-Avaliação: StratifiedGroupKFold (5 folds, split por template), 690 frases
+Avaliação: StratifiedGroupKFold (5 folds, split por template), 733 frases
 
                precision    recall  f1-score   support
 
-         data      1.000     0.993     0.996       404
+         data      0.993     0.989     0.991       437
      forecast      0.967     1.000     0.983        58
-       orders      0.982     0.966     0.974        58
+       orders      0.913     0.926     0.920        68
          chat      1.000     0.929     0.963        28
-personal_data      0.949     1.000     0.974        56
-        write      0.962     1.000     0.980        50
-    off_topic      0.943     0.917     0.930        36
+personal_data      0.966     1.000     0.982        56
+        write      0.980     0.960     0.970        50
+    off_topic      0.944     0.944     0.944        36
 
-     accuracy                          0.986       690
-    macro avg      0.972     0.972     0.971       690
- weighted avg      0.986     0.986     0.985       690
+     accuracy                          0.978       733
+    macro avg      0.966     0.964     0.965       733
+ weighted avg      0.978     0.978     0.978       733
 
 Matriz de confusão (linhas = real, colunas = previsto):
                data  forecast  orders  chat  personal  write  off_topi
-data            401         0       1     0         1      1         0
+data            432         0       5     0         0      0         0
 forecast          0        58       0     0         0      0         0
-orders            0         2      56     0         0      0         0
+orders            3         2      63     0         0      0         0
 chat              0         0       0    26         0      0         2
 personal_data     0         0       0     0        56      0         0
-write             0         0       0     0         0     50         0
-off_topic         0         0       0     0         2      1        33
+write             0         0       0     0         2     48         0
+off_topic         0         0       1     0         0      1        34
 
 Limiar | decididas pelo classificador | accuracy nessas
-  0.50 |  99.9% |  98.7%
-  0.55 |  99.6% |  98.8%
-  0.60 |  99.6% |  98.8%
-  0.65 |  99.6% |  98.8%
-  0.70 |  99.6% |  98.8%
-  0.75 |  99.4% |  99.0%
-  0.80 |  99.4% |  99.0%
-  0.90 |  99.3% |  99.1%
-
-Latência em CPU: 59 ms por pergunta
+  0.50 | 100.0% |  97.8%
+  0.55 | 100.0% |  97.8%
+  0.60 | 100.0% |  97.8%
+  0.65 |  99.9% |  97.8%
+  0.70 |  99.5% |  98.1%
+  0.75 |  99.3% |  98.2%
+  0.80 |  99.0% |  98.2%
+  0.90 |  98.1% |  98.7%
