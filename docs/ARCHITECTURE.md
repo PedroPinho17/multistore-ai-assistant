@@ -69,12 +69,12 @@ Fine-tuning helped a lot (+20 points at 1.5B), but the hosted model is about 30 
 
 ### A local intent classifier before the LLM
 
-Refusals (personal data, write requests, off-topic) shouldn't depend on the LLM following instructions, and shouldn't cost tokens. I compared two classifiers on 690 sentences with grouped 5-fold CV (split by template, so paraphrases of the same sentence never leak between train and test):
+Refusals (personal data, write requests, off-topic) shouldn't depend on the LLM following instructions, and shouldn't cost tokens. I compared two classifiers on 733 sentences with grouped 5-fold CV (split by template, so paraphrases of the same sentence never leak between train and test):
 
 | Classifier | Accuracy | Decided without LLM |
 |---|---|---|
-| MiniLM embeddings + logistic regression | 94.6 % | 88.8 % at 0.70 threshold |
-| **XLM-RoBERTa base, fine-tuned** | **98.6 %** | **99.3 % at 0.90 threshold (99.1 % accurate)** |
+| MiniLM embeddings + logistic regression | 94.8 % | 87.4 % at 0.70 threshold |
+| **XLM-RoBERTa base, fine-tuned** | **97.8 %** | **98.1 % at 0.90 threshold (98.7 % accurate)** |
 
 XLM-R is multilingual (PT/EN/ES/FR) and runs in ~60 ms on CPU. MiniLM remains as a lighter fallback (`INTENT_MODEL=minilm`).
 
@@ -159,6 +159,18 @@ Examples serve every account, so they are managed like shared code: the **Exampl
 
 The XLM-R classifier learned the *shape* "Que … devo …?" as `orders` with 99.9 % confidence, so *"Que produtos devo promover ou retirar da carta?"* went to the ingredient-order model and got an answer about burger buns. Retraining needs Kaggle, so `trust_shortcut` adds a keyword check: the `orders` shortcut is only taken if the question has an order/buy/restock word in one of the four languages; otherwise the LLM decides (and can still answer `ORDERS`). It can only remove a shortcut, never add one, and a unit test checks that every `orders` phrase in the training set still passes. The misread phrases were also added to the dataset as `data`, for the next training run.
 
+### Fast plans under RLS: timestamps compared with timestamps
+
+With RLS on, Postgres only uses a column's statistics for `LEAKPROOF` operators. The LLM writes dates as `sold_at >= CAST('2026-01-01' AS DATE)`, and `timestamp >= date` is not leakproof, so the planner estimated 1 row instead of ~380 000 and picked nested loops that hit the 10 s timeout (eval questions 16 and 27: over 30 s under RLS, 0.3 s without it). Changing the policies did not help; the validator now casts the other side of comparisons with timestamp columns to `TIMESTAMP`, the same value Postgres already used, so results are unchanged and the plans are normal again (0.02–0.7 s for all three roles). Integration tests time these queries per role and check the planner estimate.
+
+### Two LLM keys
+
+`GROQ_API_KEY_FALLBACK` is optional. The LLM client keeps the OpenAI SDK interface; on a quota error (HTTP 429) it retries the same request, streaming included, with the next key, and sets the exhausted key aside for the wait the provider reports. Other errors are not retried with another key.
+
+### Password reset by email
+
+`POST /password/forgot` answers the same whether or not the account exists and sends the email in the background, so neither the body nor the timing tells which emails are registered. Tokens are 32 random bytes; only their SHA-256 is stored, they expire after 30 minutes, are single use, and a new request cancels older links. The link carries the token in the URL fragment (`#token=`), which the browser never sends to the server, so it stays out of access logs, proxies and the Referer. Demo accounts can't have an email (a database check) and get a clear refusal, since their passwords are public anyway.
+
 ### Connection pool
 
 Each `/ask` touches the DB 5–8 times (user, RAG, RLS key, query, conversation, log). `psycopg_pool` keeps two pools (owner and read-only) instead of a TCP + SCRAM handshake per call. Read-only connections are configured with `read_only = True` at creation. Offline scripts (data generation, training, evaluation) still use plain `psycopg.connect`.
@@ -182,11 +194,13 @@ A `Trace` lives in a `ContextVar` for the duration of a request. The LLM wrapper
 | Stolen or stale tokens | 8 h expiry; profile re-read on every request, so a disabled account loses access at once |
 | XSS / clickjacking | Vue text interpolation only (no `v-html`), CSP, `X-Frame-Options: DENY`, pinned CDN scripts with SRI |
 | CSV injection | Cells starting with `= + - @` are prefixed when exporting |
+| Account takeover via password reset | Hashed, single-use, 30-minute tokens in the URL fragment; same answer for unknown emails; rate limits per IP and per email; no reset for demo accounts |
 
 ## 5. Known limits
 
 - **Single process.** Rate limits and the schema cache live in memory. Running several API replicas would need Redis (or similar) for both.
-- **JWT revocation** is per account (disable/delete), not per token: there is no "log out all devices" list.
+- **JWT revocation** is per account (disable/delete), not per token: there is no "log out all devices" list, and a password reset does not end sessions already open.
+- **Filters that transform a timestamp column** (`EXTRACT(YEAR FROM sold_at) = 2026`, `sold_at::date = …`) still get no statistics under RLS; the validator only rewrites plain comparisons. None of the 40 eval questions uses them.
 - **The LLM is external.** Questions and the schema description go to Groq. For a real client this needs a DPA, or a self-hosted model (the Qwen + LoRA path is documented but 30 points behind).
 - **Synthetic data.** Sales follow seasonal patterns from a fixed seed. The forecast MAE is measured on this data, not on a real restaurant.
 - **`request_log` keeps questions** after a user deletes a conversation, which is useful for auditing but has to be stated in a privacy policy. There is no automatic retention job yet.
