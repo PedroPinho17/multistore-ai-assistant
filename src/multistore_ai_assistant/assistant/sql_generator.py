@@ -9,15 +9,15 @@ import re
 from datetime import date
 
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from multistore_ai_assistant.assistant.examples import find_similar
+from multistore_ai_assistant.assistant.llm import llm_client
 from multistore_ai_assistant.db.schema import get_schema_text
 from multistore_ai_assistant.observability import record_llm
 
 load_dotenv()
 
-client = OpenAI(api_key=os.environ["GROQ_API_KEY"], base_url=os.environ["LLM_BASE_URL"])
+client = llm_client()     # GROQ_API_KEY e, se a quota acabar, GROQ_API_KEY_FALLBACK
 MODEL = os.environ["LLM_MODEL"]
 
 BUSINESS_NOTES = """

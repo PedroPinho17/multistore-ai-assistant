@@ -332,6 +332,7 @@ Integration and model tests skip themselves when Postgres or the models are not 
 | `DATABASE_URL` | Owner connection (setup scripts, login, RAG writes) |
 | `READONLY_DATABASE_URL` | `assistente` role used to run generated SQL; `set_passwords` applies its password |
 | `GROQ_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | Any OpenAI-compatible endpoint works |
+| `GROQ_API_KEY_FALLBACK` | Optional. Key from a second account, used automatically when the main key runs out of quota (HTTP 429) |
 | `JWT_SECRET` | At least 32 random characters, or the API refuses to start |
 | `ENABLE_DOCS` | `1` turns on Swagger at `/docs` |
 | `APP_PORT` | Host port of the Docker app (default `8001`); use another one to run Docker and a local uvicorn side by side |

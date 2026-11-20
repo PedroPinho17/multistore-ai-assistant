@@ -332,6 +332,7 @@ Os testes de integração e de modelos saltam-se sozinhos quando o Postgres ou o
 | `DATABASE_URL` | Ligação do dono (scripts de instalação, login, escritas do RAG) |
 | `READONLY_DATABASE_URL` | Role `assistente`, usado para correr o SQL gerado; o `set_passwords` aplica a sua password |
 | `GROQ_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | Funciona qualquer endpoint compatível com OpenAI |
+| `GROQ_API_KEY_FALLBACK` | Opcional. Chave de uma segunda conta, usada automaticamente quando a quota da principal acaba (HTTP 429) |
 | `JWT_SECRET` | Pelo menos 32 caracteres aleatórios, senão a API não arranca |
 | `ENABLE_DOCS` | `1` liga o Swagger em `/docs` |
 | `APP_PORT` | Porta da app Docker no computador (por defeito `8001`); usa outra para correr o Docker e um uvicorn local ao mesmo tempo |
