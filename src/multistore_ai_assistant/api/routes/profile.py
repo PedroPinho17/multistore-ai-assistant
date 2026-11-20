@@ -24,12 +24,12 @@ def profile(user: dict = Depends(conversation_user)):
 
 @router.post("/password")
 def profile_password(body: PasswordIn, user: dict = Depends(current_user)):
-    require_not_demo(user)                # a password é pública: mudá-la trancava a demo a toda a gente
     """Muda a password do próprio utilizador.
 
     Devolve 400 (e não 401) quando a password atual está errada,
     para a UI não interpretar o erro como sessão expirada.
     """
+    require_not_demo(user)                # a password é pública: mudá-la trancava a demo a toda a gente
     password_limiter.check(user["username"])
     try:
         change_password(user["username"], body.current_password, body.new_password)
@@ -52,8 +52,8 @@ def profile_email(body: EmailIn, user: dict = Depends(conversation_user)):
 
 @router.post("/avatar")
 def profile_avatar(body: AvatarIn, user: dict = Depends(conversation_user)):
-    require_not_demo(user)                # a foto da conta de demo aparecia a todos os visitantes
     """Guarda a foto de perfil (validada: tipo, tamanho e bytes da imagem)."""
+    require_not_demo(user)                # a foto da conta de demo aparecia a todos os visitantes
     try:
         set_avatar(user["username"], body.image)
     except AvatarError as e:
@@ -63,7 +63,7 @@ def profile_avatar(body: AvatarIn, user: dict = Depends(conversation_user)):
 
 @router.delete("/avatar")
 def profile_avatar_delete(user: dict = Depends(conversation_user)):
-    require_not_demo(user)
     """Remove a foto de perfil (volta o logótipo da marca ou do grupo)."""
+    require_not_demo(user)
     set_avatar(user["username"], None)
     return {"ok": True}
