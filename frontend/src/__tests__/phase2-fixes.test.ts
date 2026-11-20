@@ -292,7 +292,7 @@ describe('admin metrics', () => {
     loginAs('pedro', ['observability'])
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(ok({ pending: 0 }))))
     const router = createRouter({
-      history: createMemoryHistory('/app/'),
+      history: createMemoryHistory('/'),
       routes: [{ path: '/admin', name: 'admin', component: { template: '<div />' } }],
     })
     await router.push('/admin')
@@ -370,7 +370,7 @@ describe('pending-review count', () => {
     loginAs('ana', ['teach'])
     const calls = serveCount()
     const router = createRouter({
-      history: createMemoryHistory('/app/'),
+      history: createMemoryHistory('/'),
       routes: [{ path: '/:p(.*)', name: 'page', component: { template: '<div />' } }],
     })
     await router.push('/profile')

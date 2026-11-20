@@ -6,7 +6,7 @@ const API = 'http://127.0.0.1:8002'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/app/',
+  base: '/',
   plugins: [vue()],
   resolve: {
     alias: {
@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     proxy: {
       // HTML (browser navigation) stays on Vite; fetch/XHR go to the FastAPI backend.
-      '^/(?!src/|@|node_modules/|app/).*': {
+      '^/(?!src/|@|node_modules/).*': {
         target: API,
         changeOrigin: true,
         bypass(req) {

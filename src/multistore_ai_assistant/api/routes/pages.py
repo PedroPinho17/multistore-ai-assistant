@@ -5,21 +5,32 @@ caminhos também são endpoints GET da API (``/users``, ``/profile``, ``/review`
 por isso a página só é servida a uma navegação do browser: pede HTML e não traz
 token. Os pedidos da UI à API levam sempre ``Authorization: Bearer``.
 """
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
-WEB_DIR = Path(__file__).resolve().parents[4] / "web"
+_DEFAULT_APP_DIR = Path(__file__).resolve().parents[4] / "frontend" / "dist"
+APP_DIR = Path(os.environ["VUE_APP_DIR"]) if os.environ.get("VUE_APP_DIR") else _DEFAULT_APP_DIR
+
 router = APIRouter(include_in_schema=False)
 
-# Páginas da UI (além de "/"); têm de coincidir com ROUTES em web/static/js/app.js
+# Páginas da UI (além de "/"); coincidem com as rotas do Vue Router
 UI_PATHS = frozenset({"/login", "/reset-password", "/chat", "/dashboard", "/profile",
                       "/users", "/admin", "/settings", "/review"})
 
 
-def index_page() -> FileResponse:
-    return FileResponse(WEB_DIR / "index.html", media_type="text/html")
+FRONTEND_NOT_BUILT = "frontend not built, run npm run build in frontend"
+
+
+def index_page() -> Response:
+    """O index.html da SPA; sem build (``frontend/dist``) dá 503 com a instrução, não um 500."""
+    index = APP_DIR / "index.html"
+    if not index.is_file():
+        return JSONResponse(status_code=503, content={"detail": {"code": "frontend_not_built",
+                                                                 "message": FRONTEND_NOT_BUILT}})
+    return FileResponse(index, media_type="text/html")
 
 
 def is_page_request(request: Request) -> bool:
@@ -39,10 +50,15 @@ def health():
 @router.get("/favicon.ico")
 def favicon():
     """Os browsers pedem sempre /favicon.ico, mesmo com o <link rel="icon">."""
-    return FileResponse(WEB_DIR / "static" / "icons" / "favicon.ico", media_type="image/x-icon")
+    ico = APP_DIR / "favicon.ico"
+    if not ico.is_file():
+        ico = APP_DIR / "icons" / "favicon.ico"
+    if not ico.is_file():
+        return Response(status_code=404)
+    return FileResponse(ico, media_type="image/x-icon")
 
 
 @router.get("/")
 def index():
-    """Serve a UI Vue (``web/index.html``)."""
+    """Serve a SPA Vue (``frontend/dist/index.html``)."""
     return index_page()

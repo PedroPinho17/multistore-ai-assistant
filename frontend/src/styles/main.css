@@ -1,6 +1,6 @@
-﻿/* Same files and same order as the <link> tags of the old UI (web/index.html): with equal
-   specificity the later file wins, so the order is part of the layout.
-   tests/unit/test_css_parity.py checks both. */
+﻿/* Single stylesheet entry (imported from main.ts). Order matters: with equal specificity
+   the later file wins. tests/unit/test_css_guard.py checks that this is the only
+   way styles get in and that it imports every partial in styles/. */
 @import './base.css';
 @import './chat.css';
 @import './common.css';
@@ -10,6 +10,5 @@
 @import './dialogs.css';
 @import './shell.css';
 
-/* Old UI: <div id="app" style="height:100%"> */
 html, body, #app { height: 100%; }
 body { margin: 0; }

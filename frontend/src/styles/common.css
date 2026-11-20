@@ -14,11 +14,10 @@ a { color: var(--brand); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
 .muted { color: var(--muted); }
 
-/* vue-only: arranque falhou (sem textos para montar a app): main.ts → boot.ts mostra isto */
+/* Arranque falhou (sem textos para montar a app): main.ts → boot.ts mostra isto */
 .boot-error { max-width: 420px; margin: 18vh auto 0; padding: 0 16px; text-align: center; color: var(--text); }
 .boot-error h1 { font-size: 20px; margin: 0 0 8px; }
 .boot-error p { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
-/* end vue-only */
 
 /* ---------- Cores de destaque (Definições): contraste AA nos dois temas ---------- */
 :root { --user: var(--btn); }

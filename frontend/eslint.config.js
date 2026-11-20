@@ -14,6 +14,8 @@ export default tseslint.config(
       'public/**',
       'src/i18n/generated/**',
       'scripts/gen-locales.mjs',
+      'scripts/layout-shots/**',
+      'src/**/*.vue.js',
     ],
   },
   eslint.configs.recommended,

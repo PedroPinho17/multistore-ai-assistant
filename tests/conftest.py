@@ -23,7 +23,7 @@ for key, value in {
 }.items():
     os.environ.setdefault(key, value)
 
-# SPA /app: fixture mínima para os testes unitários (antes de importar api.main)
+# SPA em /: fixture mínima para os testes unitários (antes de importar api.main)
 os.environ.setdefault(
     "VUE_APP_DIR",
     str(Path(__file__).resolve().parent / "fixtures" / "vue_dist"),

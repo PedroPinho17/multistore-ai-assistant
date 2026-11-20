@@ -1,6 +1,6 @@
 """Corre os testes de JavaScript (tests/js, com o test runner do node) dentro do pytest.
 
-Hoje: o parser de Server-Sent Events do chat (web/static/js/sse.js). Saltam se não houver node.
+Hoje: o check-lazy-chunks.mjs (Chart.js fora do arranque). Saltam se não houver node.
 """
 import shutil
 import subprocess

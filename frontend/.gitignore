@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+# vue-tsc output from before tsconfig.app.json had noEmit (App.vue → App.vue.js)
+src/**/*.vue.js
+src/**/*.vue.js.map
+# compare-layout.mjs screenshots
+scripts/layout-shots/
 
 # Editor directories and files
 .vscode/*

@@ -132,9 +132,6 @@
 @keyframes shake   { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) {
-  header { padding: 10px 12px; gap: 8px; } header .who, header .chip-role, .clear-btn { display: none; }
-  .brand { min-width: 0; gap: 8px; } .brand > div:last-child { min-width: 0; }
-  .brand .app-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .head-right { gap: 6px; flex-shrink: 0; } .icon-btn { padding: 6px 9px; }
   .bubble { max-width: 88%; } .suggestions { margin-left: 0; }
 }

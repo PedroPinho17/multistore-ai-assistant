@@ -115,7 +115,7 @@ let wrapper: VueWrapper | null = null
 
 async function mountView(View: object, path: string) {
   const router = createRouter({
-    history: createMemoryHistory('/app/'),
+    history: createMemoryHistory('/'),
     routes: [
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/chat', name: 'chat', component: { template: '<div />' } },

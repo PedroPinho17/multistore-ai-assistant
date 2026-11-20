@@ -10,7 +10,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "compare-layout": "node scripts/compare-layout.mjs",
+    "gen-locales": "node scripts/gen-locales.mjs"
   },
   "dependencies": {
     "chart.js": "^4.6.1",

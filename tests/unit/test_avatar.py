@@ -228,7 +228,3 @@ def test_missing_or_invalid_photo_is_404(avatar_dir):
 def test_other_api_responses_are_still_not_cached():
     assert client.get("/me", headers=bearer()).headers["cache-control"] == "no-store"
 
-
-def test_ui_script_is_served():
-    r = client.get("/static/js/ui.js")
-    assert r.status_code == 200 and "LangPicker" in r.text and "avatarColor" in r.text

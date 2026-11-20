@@ -20,8 +20,8 @@ function build(assets, { html } = {}) {
   fs.mkdirSync(path.join(dir, "assets"));
   for (const [name, code] of Object.entries(assets)) fs.writeFileSync(path.join(dir, "assets", name), code);
   fs.writeFileSync(path.join(dir, "index.html"), html ??
-    '<!doctype html><html><head><script src="/app/theme-boot.js"></script>' +
-    '<script type="module" crossorigin src="/app/assets/index.js"></script></head><body><div id="app"></div></body></html>');
+    '<!doctype html><html><head><script src="/theme-boot.js"></script>' +
+    '<script type="module" crossorigin src="/assets/index.js"></script></head><body><div id="app"></div></body></html>');
   return dir;
 }
 
@@ -87,8 +87,8 @@ test("Chart.js reached through a chain of static imports is caught", () => {
 });
 
 test("a modulepreload link to the Chart.js chunk is caught", () => {
-  const html = '<script type="module" src="/app/assets/index.js"></script>' +
-    '<link rel="modulepreload" crossorigin href="/app/assets/chartjs-D4x9.js">';
+  const html = '<script type="module" src="/assets/index.js"></script>' +
+    '<link rel="modulepreload" crossorigin href="/assets/chartjs-D4x9.js">';
   const { code, out } = check(build({ "index.js": "1;", "chartjs-D4x9.js": CHARTJS }, { html }));
   assert.equal(code, 1, out);
   assert.match(out, /chartjs-D4x9\.js/);

@@ -1,4 +1,4 @@
-/** Accent colour math (port of web/static/js/settings.js). */
+/** Accent colour math (custom palette + favicon / CSS variables). */
 
 export const ACCENTS = ['green', 'orange', 'blue', 'wine', 'purple', 'graphite'] as const
 export type NamedAccent = (typeof ACCENTS)[number]

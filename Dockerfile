@@ -38,13 +38,12 @@ RUN HF_HUB_OFFLINE=0 python -c "from sentence_transformers import SentenceTransf
 SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 
-# 2.º o pacote Python (antes de web/data/dist: mudanças nesses não reinstalamos o projeto)
+# 2.º o pacote Python (antes de data/dist: mudanças nesses não reinstalamos o projeto)
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 COPY db ./db
-COPY web ./web
 COPY data ./data
 COPY --from=frontend /frontend/dist ./frontend/dist
 

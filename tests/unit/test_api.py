@@ -100,13 +100,16 @@ def test_api_get_with_same_path_still_returns_json(path):
     assert client.get(path).status_code == 401          # sem Accept: text/html também é a API
 
 
-def test_unknown_path_is_not_the_app():
-    assert client.get("/nao-existe", headers=HTML).status_code == 404
+def test_unknown_client_path_still_gets_the_spa_shell():
+    """Fallback SPA: caminhos sem ficheiro devolvem o index (o Vue Router decide)."""
+    r = client.get("/nao-existe", headers=HTML)
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert 'id="app"' in r.text
 
 
-@pytest.mark.parametrize("path", ["/app/", "/app/chat", "/app/login", "/app/reset-password"])
+@pytest.mark.parametrize("path", ["/chat", "/login", "/reset-password", "/dashboard"])
 def test_vue_spa_serves_index_for_client_routes(path):
-    """F5 em /app/chat (e afins) devolve o index.html do Vite, não 404."""
+    """F5 em /chat (e afins) devolve o index.html do Vite, não 404."""
     r = client.get(path, headers=HTML)
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert 'id="app"' in r.text
@@ -116,10 +119,163 @@ def test_vue_spa_serves_index_for_client_routes(path):
     assert "jsdelivr" not in csp and "unsafe-eval" not in csp and "unsafe-inline" not in csp.split("script-src")[1].split(";")[0]
 
 
-@pytest.mark.parametrize("path", ["/app/assets/missing.js", "/app/assets/foo", "/app/assets/",
-                                  "/app/assets", "/app/assets/sub/x", "/app/assets/sub/"])
+@pytest.mark.parametrize("path,dest", [
+    ("/app", "/"),
+    ("/app/", "/"),
+    ("/app/chat", "/chat"),
+    ("/app/login", "/login"),
+    ("/app/reset-password", "/reset-password"),
+    ("/app/assets/ok.js", "/assets/ok.js"),
+])
+def test_legacy_app_prefix_redirects(path, dest):
+    r = client.get(path, headers=HTML, follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == dest
+
+
+def test_legacy_app_redirect_keeps_the_query_string():
+    r = client.get("/app/reset-password?token=abc&x=1", headers=HTML, follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == "/reset-password?token=abc&x=1"
+
+
+def test_legacy_app_redirect_keeps_encoded_chars_in_the_path():
+    """``%3F`` / ``%23`` / ``%25`` no caminho não passam a ser query, fragmento ou outro escape."""
+    r = client.get("/app/a%3Fb%23c%25d?q=1", headers=HTML, follow_redirects=False)
+    assert r.headers["location"] == "/a%3Fb%23c%25d?q=1"
+
+
+@pytest.mark.parametrize("path,dest", [
+    ("/app//evil.com", "/evil.com"),
+    ("/app///evil.com/x", "/evil.com/x"),
+    ("/app/\\evil.com", "/evil.com"),
+    ("/app/\\/evil.com", "/evil.com"),
+    ("/app//\\evil.com", "/evil.com"),
+    ("/app/%2F%2Fevil.com", "/evil.com"),
+    ("/app/%5Cevil.com", "/evil.com"),
+])
+def test_legacy_app_redirect_is_never_an_open_redirect(path, dest):
+    """``/app//evil.com`` não pode dar ``Location: //evil.com`` (outro site para o browser)."""
+    r = client.get(path, headers=HTML, follow_redirects=False)
+    assert r.status_code == 307
+    location = r.headers["location"]
+    assert location == dest
+    assert location.startswith("/") and location[1:2] not in ("/", "\\")
+
+
+@pytest.mark.parametrize("path,dest", [
+    ("/app", "/"), ("/app/", "/"), ("/app/chat", "/chat"), ("/app//evil.com", "/evil.com"),
+    ("/app/\\evil.com", "/evil.com"), ("/app/\t/evil.com", "/evil.com"),
+    ("/appointments", None), ("/chat", None), ("/", None),
+])
+def test_legacy_app_redirect_path(path, dest):
+    assert api.legacy_app_redirect_path(path) == dest
+
+
+def test_legacy_app_redirect_gets_security_headers():
+    r = client.get("/app/chat", headers=HTML, follow_redirects=False)
+    assert r.status_code == 307
+    assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["cache-control"] == "no-store"
+
+
+def test_legacy_app_redirect_lands_on_the_spa():
+    r = client.get("/app/chat?x=1", headers=HTML)
+    assert r.status_code == 200 and 'id="app"' in r.text
+    assert str(r.url).endswith("/chat?x=1")
+
+
+# ---------- fallback da SPA só para navegações ----------
+
+def test_get_on_post_only_route_is_405_not_the_spa():
+    r = client.get("/ask", headers=HTML)
+    assert r.status_code == 405
+    assert r.headers["content-type"].startswith("application/json")
+    assert 'id="app"' not in r.text
+
+
+@pytest.mark.parametrize("path", ["/api/nao-existe", "/ask/nao-existe", "/auth/x", "/health/x",
+                                  "/conversations/1/nao-existe/x", "/docs/x", "/openapi.json"])
+def test_unknown_api_path_is_json_404_not_the_spa(path):
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 404
+    assert r.headers["content-type"].startswith("application/json")
+    assert 'id="app"' not in r.text
+
+
+@pytest.mark.parametrize("path", ["/admin/x", "/users/abc", "/settings/x/y", "/review/abc",
+                                  "/profile/password", "/dashboard/x"])
+def test_navigation_below_a_page_gets_the_spa(path):
+    """/admin/x aberto no browser: o Vue Router decide (não um 404/405 JSON da API)."""
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 200 and 'id="app"' in r.text
+    assert r.headers["cache-control"] == "no-cache"
+
+
+@pytest.mark.parametrize("headers", [{**HTML, "Authorization": "Bearer x"}, {"Accept": "application/json"}, {}])
+def test_api_fetch_below_a_page_stays_json(headers):
+    r = client.get("/admin/x", headers=headers)
+    assert r.status_code == 404
+    assert r.headers["content-type"].startswith("application/json")
+
+
+@pytest.mark.parametrize("path", ["/admin/metrics", "/users/options", "/settings/app"])
+def test_real_api_route_below_a_page_stays_the_api(path):
+    """Uma rota GET real continua a ser a API mesmo numa navegação (sem token: 401 JSON)."""
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 401
+    assert r.headers["content-type"].startswith("application/json")
+
+
+def test_unknown_path_without_html_accept_is_404():
+    """fetch/XHR (sem Accept: text/html) a um caminho desconhecido: 404, não o index.html."""
+    r = client.get("/nao-existe", headers={"Accept": "application/json"})
+    assert r.status_code == 404 and 'id="app"' not in r.text
+
+
+def test_unknown_path_with_other_method_is_not_the_spa():
+    r = client.post("/nao-existe", headers=HTML, json={})
+    assert r.status_code in (404, 405) and 'id="app"' not in r.text
+    assert r.headers["content-type"].startswith("application/json")
+
+
+@pytest.mark.parametrize("path", ["/theme-boot.js", "/favicon.svg", "/site.webmanifest", "/assets/ok.js"])
+def test_spa_static_files_are_served_without_html_accept(path):
+    """Ficheiros reais do build saem sempre, seja qual for o Accept (scripts, ícones, manifest)."""
+    r = client.get(path, headers={"Accept": "*/*"})
+    assert r.status_code == 200
+
+
+def test_api_prefixes_cover_the_api_routes():
+    for prefix in ("/ask", "/conversations", "/health", "/admin", "/users", "/profile", "/api",
+                   "/auth", "/docs", "/openapi.json"):
+        assert prefix in api.API_PREFIXES
+    assert not api.is_api_path("/nao-existe") and not api.is_api_path("/assets/ok.js")
+
+
+# ---------- sem build do frontend ----------
+
+@pytest.mark.parametrize("path", ["/", "/chat"])
+def test_missing_frontend_build_is_a_clear_503(monkeypatch, tmp_path, path):
+    from multistore_ai_assistant.api.routes import pages
+    monkeypatch.setattr(pages, "APP_DIR", tmp_path / "dist")
+    r = client.get(path, headers=HTML)
+    assert r.status_code == 503
+    assert r.json()["detail"]["message"] == "frontend not built, run npm run build in frontend"
+
+
+def test_missing_frontend_build_favicon_is_404(monkeypatch, tmp_path):
+    from multistore_ai_assistant.api.routes import pages
+    monkeypatch.setattr(pages, "APP_DIR", tmp_path / "dist")
+    assert client.get("/favicon.ico").status_code == 404
+
+
+@pytest.mark.parametrize("path", ["/assets/missing.js", "/assets/foo", "/assets/",
+                                  "/assets", "/assets/sub/x", "/assets/sub/"])
 def test_vue_spa_unknown_asset_is_404_never_the_index(path):
-    """Em /app/assets/ não há fallback: nunca o index.html (que ficaria em cache um ano)."""
+    """Em /assets/ não há fallback: nunca o index.html (que ficaria em cache um ano)."""
     r = client.get(path, headers=HTML)
     assert r.status_code == 404
     assert 'id="app"' not in r.text
@@ -127,29 +283,26 @@ def test_vue_spa_unknown_asset_is_404_never_the_index(path):
 
 
 def test_vue_spa_asset_revalidation_keeps_the_long_cache():
-    etag = client.get("/app/assets/ok.js").headers["etag"]
-    r = client.get("/app/assets/ok.js", headers={"If-None-Match": etag})
+    etag = client.get("/assets/ok.js").headers["etag"]
+    r = client.get("/assets/ok.js", headers={"If-None-Match": etag})
     assert r.status_code == 304
     assert "immutable" in r.headers["cache-control"]
 
 
 def test_vue_spa_existing_asset_is_immutable():
-    r = client.get("/app/assets/ok.js")
+    r = client.get("/assets/ok.js")
     assert r.status_code == 200
     assert "immutable" in r.headers["cache-control"]
     assert "max-age=31536000" in r.headers["cache-control"]
 
 
-def test_vue_spa_path_match_is_exact():
-    """/appointments não é tratado como /app."""
-    r = client.get("/appointments", headers=HTML)
-    assert r.status_code == 404
-    # UI antiga mantém jsDelivr na CSP
-    assert "jsdelivr" in client.get("/", headers=HTML).headers["content-security-policy"]
+def test_spa_csp_is_strict_everywhere():
+    csp = client.get("/", headers=HTML).headers["content-security-policy"]
+    assert "jsdelivr" not in csp and "unsafe-eval" not in csp
+    assert "script-src 'self'" in csp
 
 
-def test_static_and_api_are_not_spa_fallback():
-    assert client.get("/static/js/app.js").status_code == 200
+def test_api_and_health_are_not_spa_fallback():
     assert client.get("/health").json() == {"ok": True}
     # Pedido API com o mesmo prefixo de uma rota de página continua JSON 401
     r = client.get("/profile", headers={**HTML, "Authorization": "Bearer x"})

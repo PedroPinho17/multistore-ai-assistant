@@ -198,10 +198,3 @@ def test_users_endpoints_are_rate_limited(users_db):
     codes = [client.get("/users", headers=bearer(MARCA)).status_code for _ in range(31)]
     assert codes[:30] == [200] * 30 and codes[30] == 429
 
-
-# ---------- ficheiros estáticos ----------
-
-def test_static_js_is_served_with_revalidation():
-    r = client.get("/static/js/admin.js")
-    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
-    assert "javascript" in r.headers["content-type"]

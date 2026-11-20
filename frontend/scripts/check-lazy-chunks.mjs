@@ -18,7 +18,7 @@ const dist = path.resolve(
   process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist'),
 )
 const CHARTJS_MARKER = 'Canvas is already in use'
-const BASE = '/app/'
+const BASE = '/'
 
 const fail = msg => {
   console.error('check-lazy-chunks:', msg)

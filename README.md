@@ -25,7 +25,7 @@ Managers of a (fictional) Portuguese restaurant group ask questions in **Portugu
 - **Local intent classifier** (fine-tuned XLM-RoBERTa) routes greetings, refusals, forecasts and orders without an LLM call.
 - **RAG with pgvector**, a **SQL cache** for repeated questions in any of the four languages, and a **👎 review loop** where a reviewer fixes the SQL, tests it and teaches the assistant.
 - **Sales forecasting** with real weather (Open-Meteo) and Portuguese holidays, plus ingredient order suggestions.
-- **Product-ready web app** (Vue, no build step): streaming answers, charts, follow-up suggestions, saved conversations, accounts and modules, observability dashboard, password reset by email, dark mode, four languages, accessible, mobile.
+- **Product-ready web app** (Vue 3 + Vite): streaming answers, charts, follow-up suggestions, saved conversations, accounts and modules, observability dashboard, password reset by email, dark mode, four languages, accessible, mobile.
 - **Tested and reproducible:** 941 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
 
 | Answer with chart and table | Store manager: RLS + the SQL used |
@@ -75,10 +75,10 @@ Design decisions (why Groq and not a local model, why XLM-R, why RLS with a sign
 | **Read-only role** | `SELECT` only, read-only transactions, 10 s timeout, no access to private tables, column-level `REVOKE` on personal data. |
 | **SQL validator** | One query only; no DML/DDL, system catalogs or functions that change the session, read files or open connections. Timestamp comparisons are rewritten so plans stay fast under RLS. |
 | **API** | Rate limits, ownership checks, constant-time login, JWT with required claims, generic errors, `/docs` off by default. Password reset uses single-use, 30-minute tokens stored as SHA-256 and never reveals which emails exist. |
-| **Browser** | CSP, `X-Frame-Options: DENY`, `nosniff`, no referrer, CDN scripts pinned with Subresource Integrity, session token in `sessionStorage`, CSV formula-injection guard. |
+| **Browser** | Strict CSP (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, no referrer, session token in `sessionStorage`, CSV formula-injection guard. |
 | **Infra** | No secrets in code; the database port is bound to `127.0.0.1`. |
 
-Known limits (fine for a demo): in-memory rate limiter (use Redis with several workers), and the no-build Vue needs `'unsafe-eval'` in the CSP. Password changes and resets revoke older JWTs: each token carries the account's `token_version`, which every change bumps (the user who changed their password gets a fresh token).
+Known limits (fine for a demo): in-memory rate limiter (use Redis with several workers). Password changes and resets revoke older JWTs: each token carries the account's `token_version`, which every change bumps (the user who changed their password gets a fresh token).
 
 ## Results
 
@@ -165,8 +165,11 @@ uv run python -m multistore_ai_assistant.data.set_passwords        # demo users 
 uv run python -m multistore_ai_assistant.data.seed_examples
 uv run python -m multistore_ai_assistant.forecast.train
 uv run python -m multistore_ai_assistant.intent.train              # MiniLM; XLM-R: unzip the Kaggle output into models/intent-xlmr
+cd frontend; npm ci; npm run build; cd ..                         # the UI (frontend/dist), served by the API at /
 uv run uvicorn multistore_ai_assistant.api.main:app --port 8001
 ```
+
+Without `frontend/dist` the API still runs, but `/` answers 503 "frontend not built, run npm run build in frontend".
 
 Other commands: `db.migrate --status`, `assistant.ask "question"` (CLI), `evaluate 1` (evaluation, saved to `eval/results`).
 </details>
@@ -235,7 +238,7 @@ src/multistore_ai_assistant/
   forecast/     dataset, training, prediction, order suggestions
   data/         fictional data generator, weather and holidays, demo passwords, admin account
   finetune/     training pairs and scoring for the Qwen experiment
-web/            Vue app without a build step (pages/, css/)
+frontend/       Vue 3 + Vite SPA (served at /, with /app/* redirects for old links)
 tests/          unit/ (no DB, no LLM) and integration/ (real Postgres + models)
 eval/           questions, results, classifier reports
 notebooks/      Kaggle notebooks: Qwen SQL fine-tuning, XLM-RoBERTa classifier

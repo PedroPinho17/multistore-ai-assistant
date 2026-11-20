@@ -143,7 +143,7 @@ onUnmounted(() => stopDemo())
 <template>
   <div class="home">
     <header class="topnav">
-      <a class="brand-link" href="/app/">
+      <a class="brand-link" href="/">
         <svg class="logo-mark" aria-hidden="true"><use href="#logo" /></svg>
         <strong>Multistore AI</strong>
       </a>
@@ -262,7 +262,7 @@ onUnmounted(() => stopDemo())
             </div>
             <figure class="tour-media">
               <img
-                :src="'/app/img/' + row.img + '.webp'"
+                :src="'/img/' + row.img + '.webp'"
                 :width="row.w"
                 :height="row.h"
                 :alt="row.alt"

@@ -119,7 +119,7 @@ describe('AppShell delete while streaming', () => {
   it('disables delete on the conversation being answered', async () => {
     const { createMemoryHistory, createRouter } = await import('vue-router')
     const router = createRouter({
-      history: createMemoryHistory('/app/'),
+      history: createMemoryHistory('/'),
       routes: [{ path: '/chat', name: 'chat', component: { template: '<div />' } }],
     })
     await router.push('/chat')

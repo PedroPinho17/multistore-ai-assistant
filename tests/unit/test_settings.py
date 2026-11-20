@@ -68,11 +68,12 @@ def test_only_admin_can_update_app_settings():
 def test_every_accent_has_css_and_favicon_colors():
     """Cada cor da lista fechada tem de existir na UI (CSS e favicon)."""
     from pathlib import Path
-    web = Path(__file__).resolve().parents[2] / "web"
-    html = "".join(p.read_text(encoding="utf-8") for p in (web / "static" / "css").glob("*.css"))
-    js = (web / "static" / "js" / "settings.js").read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[2]
+    css = "".join(p.read_text(encoding="utf-8") for p in (root / "frontend" / "src" / "styles").glob("*.css"))
+    accent_ts = (root / "frontend" / "src" / "lib" / "accent.ts").read_text(encoding="utf-8")
     for accent in st.ACCENTS:
-        assert f'[data-accent="{accent}"]' in html and f"{accent}: [" in js
+        assert f'[data-accent="{accent}"]' in css and f"{accent}:" in accent_ts
+
 
 
 # ---------- endpoints ----------
@@ -147,9 +148,9 @@ def test_settings_fall_back_to_defaults_when_the_db_is_down(monkeypatch):
 def test_favicon_and_manifest_are_served():
     ico = client.get("/favicon.ico")
     assert ico.status_code == 200 and ico.headers["content-type"] == "image/x-icon"
-    svg = client.get("/static/icons/favicon.svg")
+    svg = client.get("/icons/favicon.svg")
     assert svg.status_code == 200 and "svg" in svg.headers["content-type"]
-    manifest = client.get("/static/site.webmanifest")
+    manifest = client.get("/site.webmanifest")
     assert manifest.status_code == 200 and "manifest+json" in manifest.headers["content-type"]
     icons = manifest.json()["icons"]
     for icon in icons:
