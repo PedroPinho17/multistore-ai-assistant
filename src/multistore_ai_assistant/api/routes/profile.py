@@ -3,7 +3,7 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from multistore_ai_assistant.api.auth import current_user
+from multistore_ai_assistant.api.auth import create_token, current_user
 from multistore_ai_assistant.api.deps import conversation_user, password_limiter
 from multistore_ai_assistant.api.errors import ApiError
 from multistore_ai_assistant.api.permissions import require_not_demo
@@ -28,15 +28,20 @@ def profile_password(body: PasswordIn, user: dict = Depends(current_user)):
 
     Devolve 400 (e não 401) quando a password atual está errada,
     para a UI não interpretar o erro como sessão expirada.
+
+    A mudança revoga todas as sessões da conta (``token_version`` + 1), incluindo
+    o token deste pedido; a resposta traz um token novo para quem mudou continuar.
     """
     require_not_demo(user)                # a password é pública: mudá-la trancava a demo a toda a gente
     password_limiter.check(user["username"])
     try:
-        change_password(user["username"], body.current_password, body.new_password)
+        version = change_password(user["username"], body.current_password, body.new_password)
     except PasswordError as e:
         raise ApiError(e.code, 400, str(e), **e.params) from None
+    if version is None:                   # a conta foi apagada a meio do pedido
+        raise ApiError("session_invalid", 401)
     log.info("Password alterada por %r", user["username"])
-    return {"ok": True}
+    return {"ok": True, "token": create_token({**user, "token_version": version})}
 
 
 @router.put("/email")

@@ -4,9 +4,11 @@ import os
 import bcrypt
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 
 from multistore_ai_assistant.api import conversations as conv
-from multistore_ai_assistant.api.auth import authenticate
+from multistore_ai_assistant.api import main as api
+from multistore_ai_assistant.api.auth import authenticate, create_token, load_user
 from multistore_ai_assistant.api.profile import PasswordError, change_password, delete_all_conversations, get_profile
 
 pytestmark = pytest.mark.integration
@@ -70,6 +72,33 @@ def test_change_password_roundtrip(tmp_user):
     change_password(TMP, "Inicial2026", "Nova2026pass")
     assert authenticate(TMP, "Nova2026pass")
     assert authenticate(TMP, "Inicial2026") is None
+
+
+def bearer(token: str) -> dict:
+    return {"Authorization": "Bearer " + token}
+
+
+def test_password_change_revokes_old_sessions_and_returns_a_fresh_token(tmp_user):
+    client = TestClient(api.app)
+    old = create_token(load_user(TMP))
+    other_tab = create_token(load_user(TMP))                   # outra sessão aberta
+    r = client.post("/profile/password", headers=bearer(old),
+                    json={"current_password": "Inicial2026", "new_password": "Nova2026pass"})
+    assert r.status_code == 200
+    fresh = r.json()["token"]
+    assert client.get("/me", headers=bearer(old)).status_code == 401
+    assert client.get("/me", headers=bearer(other_tab)).status_code == 401
+    assert client.get("/me", headers=bearer(fresh)).status_code == 200
+    assert load_user(TMP)["token_version"] == 1
+
+
+def test_login_right_after_a_password_change_works(tmp_user):
+    """Antes (com datas), um login no mesmo segundo da mudança era recusado."""
+    client = TestClient(api.app)
+    change_password(TMP, "Inicial2026", "Nova2026pass")
+    r = client.post("/login", json={"username": TMP, "password": "Nova2026pass"})
+    assert r.status_code == 200
+    assert client.get("/me", headers=bearer(r.json()["token"])).status_code == 200
 
 
 def test_delete_all_only_touches_my_conversations(tmp_user):

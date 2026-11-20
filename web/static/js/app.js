@@ -411,7 +411,8 @@ const RootApp = {
       if (pw.error) return;
       pw.saving = true;
       try {
-        await this.api("/profile/password", { current_password: pw.current, new_password: v });
+        const data = await this.api("/profile/password", { current_password: pw.current, new_password: v });
+        if (data.token) { this.token = data.token; store.set("token", data.token); }  // sessão nova (a antiga foi revogada)
         this.pw = { current: "", new: "", confirm: "", show: false, saving: false, error: "", ok: true };
       } catch (e) {
         pw.error = e.status === 429 ? this.t.tooMany

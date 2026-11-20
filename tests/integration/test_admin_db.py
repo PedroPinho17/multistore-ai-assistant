@@ -8,9 +8,11 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 
 from multistore_ai_assistant.api import admin, request_log, users
-from multistore_ai_assistant.api.auth import authenticate, load_user
+from multistore_ai_assistant.api import main as api
+from multistore_ai_assistant.api.auth import authenticate, create_token, load_user
 from multistore_ai_assistant.api.permissions import AccessDenied
 from multistore_ai_assistant.data import create_admin
 from multistore_ai_assistant.db import pool
@@ -19,6 +21,7 @@ from multistore_ai_assistant.observability import Trace
 
 pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
+client = TestClient(api.app)
 
 try:
     with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=3) as _c:
@@ -134,6 +137,22 @@ def test_disabling_an_account_blocks_login_and_existing_sessions(maia):
     assert authenticate("pytest.temp", "Nova-Pass-1")
 
 
+def session_ok(token: str) -> bool:
+    return client.get("/me", headers={"Authorization": "Bearer " + token}).status_code == 200
+
+
+def test_a_manager_resetting_a_password_revokes_that_accounts_sessions(maia):
+    me = actor("gestor.burgerlab")
+    new = users.create_user(me, "pytest.reposta", "Segura123", "loja", store_id=maia[0])
+    old = create_token(load_user("pytest.reposta"))
+    users.update_user(me, new["id"], modules=["sql"])                 # sem password: a sessão continua
+    assert session_ok(old)
+    users.update_user(me, new["id"], password="Nova-Pass-1")
+    assert not session_ok(old)
+    assert load_user("pytest.reposta")["token_version"] == 1
+    assert session_ok(create_token(authenticate("pytest.reposta", "Nova-Pass-1")))   # login novo entra
+
+
 def test_modules_can_change_but_never_beyond_the_actor(maia):
     me = actor("gestor.burgerlab")
     new = users.create_user(me, "pytest.mods", "Segura123", "loja", store_id=maia[0])
@@ -196,6 +215,31 @@ def test_create_admin_from_environment(monkeypatch):
     admin_user = authenticate("pytest.admin", "Painel#Seguro-2026")
     assert admin_user["role"] == "admin" and "observability" in admin_user["modules"]
     assert create_admin.main([]) == 0                            # repetir não muda nada
+    assert load_user("pytest.admin")["token_version"] == 0       # nem revoga sessões
+
+
+def test_create_admin_reset_password_revokes_admin_sessions(monkeypatch):
+    monkeypatch.setenv("ADMIN_USERNAME", "pytest.admin")
+    monkeypatch.setenv("ADMIN_PASSWORD", "Painel#Seguro-2026")
+    assert create_admin.main([]) == 0
+    old = create_token(load_user("pytest.admin"))
+    assert session_ok(old)
+    monkeypatch.setenv("ADMIN_PASSWORD", "Outro#Painel-2027")
+    assert create_admin.main(["--reset-password"]) == 0
+    assert not session_ok(old)
+    assert session_ok(create_token(authenticate("pytest.admin", "Outro#Painel-2027")))
+
+
+def test_set_passwords_does_not_log_out_the_demo_accounts(monkeypatch):
+    """Corre em cada arranque do Docker: não pode revogar as sessões das contas de demo."""
+    from multistore_ai_assistant.data import set_passwords
+    # Sem password no URL o script não mexe na password do role read-only (só nas contas de demo)
+    monkeypatch.setenv("READONLY_DATABASE_URL", "postgresql://assistente@localhost:5433/multistore")
+    before = {u: load_user(u)["token_version"] for u in set_passwords.DEMO_PASSWORDS}
+    tokens = {u: create_token(load_user(u)) for u in before}
+    set_passwords.main(reset=True)                                # repõe as passwords (as mesmas)
+    assert {u: load_user(u)["token_version"] for u in before} == before
+    assert all(session_ok(t) for t in tokens.values())
 
 
 def test_create_admin_refuses_to_promote_a_demo_account(monkeypatch):

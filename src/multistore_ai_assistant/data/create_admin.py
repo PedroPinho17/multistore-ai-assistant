@@ -18,6 +18,7 @@ import bcrypt
 import psycopg
 from dotenv import load_dotenv
 
+from multistore_ai_assistant.api.auth import BUMP_TOKEN_VERSION
 from multistore_ai_assistant.api.users import USERNAME_RE
 
 load_dotenv()
@@ -68,7 +69,9 @@ def main(argv: list[str]) -> int:
 
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         if row:
-            conn.execute("UPDATE users SET password_hash = %s, active = true WHERE username = %s",
+            # --reset-password: as sessões abertas com a password antiga deixam de valer
+            conn.execute(f"UPDATE users SET password_hash = %s, active = true, {BUMP_TOKEN_VERSION} "
+                         "WHERE username = %s",
                          (hashed, username))
             print(f"OK password do admin '{username}' atualizada.")
         else:

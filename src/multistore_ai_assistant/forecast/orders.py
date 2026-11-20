@@ -2,7 +2,13 @@
 
 Combina: (uso de ingrediente por euro nos últimos 28 dias) × (receita prevista)
 − stock actual → quantidade a encomendar (mínimo 0).
+
+``to_order`` em unidades de contagem (``un``, ``unidades``) arredonda para cima ao
+inteiro (não se encomenda meia unidade); peso/volume (kg, l, …) fica com 2 casas.
+``needed`` é a estimativa de consumo (2 casas, nunca arredondada para cima): os
+alertas de stock calculam os dias de cobertura a partir dela.
 """
+import math
 import sys
 
 import pandas as pd
@@ -13,6 +19,21 @@ from multistore_ai_assistant.db.pool import connection
 from .predict import forecast
 
 load_dotenv()
+
+# Unidades de contagem: não se encomenda meia unidade
+COUNT_UNITS = frozenset({"un", "unidade", "unidades", "u", "unit", "units"})
+
+
+def round_order_qty(value: float, unit: str) -> float:
+    """Quantidade a encomendar: contagem → ``ceil``; resto → 2 decimais.
+
+    O ``round(…, 6)`` antes do ``ceil`` tira o ruído de vírgula flutuante
+    (``3.0000000000000004`` é 3, não 4).
+    """
+    qty = float(value)
+    if str(unit).strip().lower() in COUNT_UNITS:
+        return float(math.ceil(round(qty, 6)))
+    return round(qty, 2)
 
 # Uso de ingredientes por euro de faturação (28 dias) + stock actual por loja
 USAGE_QUERY = """
@@ -65,8 +86,10 @@ def suggest_orders(store_id: int | None = None, days: int = 7) -> pd.DataFrame:
 
     fc = forecast(days, store_id).groupby("store_id", as_index=False)["revenue"].sum()
     df = usage.merge(fc, on="store_id")
-    df["needed"] = (df["per_euro"] * df["revenue"]).round(2)
-    df["to_order"] = (df["needed"] - df["stock"]).clip(lower=0).round(2)
+    needed = df["per_euro"] * df["revenue"]
+    df["needed"] = needed.round(2)                      # estimativa: nunca arredondada para cima
+    missing = (needed - df["stock"]).clip(lower=0)
+    df["to_order"] = [round_order_qty(v, u) for v, u in zip(missing, df["unit"], strict=True)]
     return (
         df[["store_id", "ingredient", "unit", "needed", "stock", "to_order"]]
         .sort_values(["store_id", "to_order"], ascending=[True, False])

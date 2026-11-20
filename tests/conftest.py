@@ -62,12 +62,13 @@ def reset_rate_limits():
         limiter._calls.clear()
 
 
-# Perfis como saem de auth.load_user (os módulos são os efetivos de cada perfil)
+# Perfis como saem de auth.load_user (os módulos são os efetivos de cada perfil;
+# token_version 0 = a password nunca mudou)
 ADMIN = {"id": 99, "username": "dono", "role": "admin", "brand_id": None, "store_id": None,
-         "modules": ["sql", "forecast", "orders", "teach", "users", "observability"]}
+         "modules": ["sql", "forecast", "orders", "teach", "users", "observability"], "token_version": 0}
 IMPERADOR = {"id": 1, "username": "pedro", "role": "imperador", "brand_id": None, "store_id": None,
-             "modules": ["sql", "forecast", "orders", "teach", "users"]}
+             "modules": ["sql", "forecast", "orders", "teach", "users"], "token_version": 0}
 MARCA = {"id": 2, "username": "gestor.burgerlab", "role": "marca", "brand_id": 1, "store_id": None,
-         "modules": ["sql", "forecast", "orders", "users"]}
+         "modules": ["sql", "forecast", "orders", "users"], "token_version": 0}
 LOJA = {"id": 3, "username": "gerente.maia", "role": "loja", "brand_id": None, "store_id": 1,
-        "modules": ["sql", "forecast", "orders", "users"]}
+        "modules": ["sql", "forecast", "orders", "users"], "token_version": 0}

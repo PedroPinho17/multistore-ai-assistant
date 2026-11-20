@@ -160,3 +160,20 @@ def test_orders_only_for_visible_stores_sorted(monkeypatch, fake_forecast):
 def test_no_visible_stores_means_no_forecast(monkeypatch, fake_forecast):
     monkeypatch.setattr(service, "visible_stores", lambda u: [])
     assert service.forecast_answer({"role": "x", "brand_id": None, "store_id": None})[1] == []
+
+
+def test_orders_ceil_count_units_and_keep_decimals_for_weight(monkeypatch):
+    """to_order: un → ceil, kg/l → 2 casas; needed é a estimativa (2 casas, nunca ceil)."""
+    monkeypatch.setattr(service, "visible_stores", lambda u: [1, 2])
+    monkeypatch.setattr(service, "suggest_orders", lambda s, d: pd.DataFrame({
+        "store_id": [1, 2, 1, 1],
+        "ingredient": ["Pão", "Pão", "Alface", "Óleo"],
+        "unit": ["un", "un", "kg", "l"],
+        "needed": [10.1, 5.01, 1.234, 0.456],
+        "stock": [1.0, 0.5, 0.1, 0.2],
+        "to_order": [9.1, 4.51, 1.134, 0.256],
+    }))
+    rows = {r[0]: r for r in service.orders_answer(LOJA)[1]}
+    assert rows["Pão"] == ("Pão", "un", 15.11, 1.5, 14.0)         # needed 10.1+5.01; to_order 9.1+4.51 → 14
+    assert rows["Alface"] == ("Alface", "kg", 1.23, 0.1, 1.13)
+    assert rows["Óleo"] == ("Óleo", "l", 0.46, 0.2, 0.26)

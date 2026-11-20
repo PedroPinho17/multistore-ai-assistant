@@ -26,7 +26,7 @@ Os gestores de um grupo de restauração português (fictício) fazem perguntas 
 - **RAG com pgvector**, **cache de SQL** para perguntas repetidas em qualquer das quatro línguas, e um **ciclo de revisão dos 👎** em que quem revê corrige o SQL, testa-o e ensina o assistente.
 - **Previsão de vendas** com meteorologia real (Open-Meteo) e feriados portugueses, e sugestões de encomenda de ingredientes.
 - **Aplicação web pronta a usar** (Vue, sem passo de build): respostas em streaming, gráficos, sugestões de seguimento, conversas guardadas, contas e módulos, painel de observabilidade, recuperação de password por email, modo escuro, quatro línguas, acessível e adaptada ao telemóvel.
-- **Testado e reproduzível:** 845 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
+- **Testado e reproduzível:** 886 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
 
 | Resposta com gráfico e tabela | Gerente de loja: RLS + o SQL usado |
 |---|---|
@@ -78,7 +78,7 @@ Decisões de desenho (porquê Groq e não um modelo local, porquê XLM-R, porqu�
 | **Browser** | CSP, `X-Frame-Options: DENY`, `nosniff`, sem referrer, scripts de CDN fixados com Subresource Integrity, token da sessão em `sessionStorage`, proteção contra injeção de fórmulas no CSV. |
 | **Infraestrutura** | Nenhum segredo no código; a porta da base de dados só está ligada a `127.0.0.1`. |
 
-Limites conhecidos (aceitáveis numa demo): rate limiter em memória (usar Redis com vários workers), os JWT não podem ser revogados antes de expirarem, e o Vue sem build precisa de `'unsafe-eval'` na CSP.
+Limites conhecidos (aceitáveis numa demo): rate limiter em memória (usar Redis com vários workers), e o Vue sem build precisa de `'unsafe-eval'` na CSP. Mudanças e reposições de password revogam JWTs antigos: cada token leva a `token_version` da conta, que cada mudança incrementa (quem mudou a password recebe um token novo).
 
 ## Resultados
 
@@ -179,7 +179,7 @@ uv run pytest tests/unit       # sem base de dados, sem LLM, sem modelos (~6 s)
 uv run pytest --cov            # com cobertura
 ```
 
-**845 testes** (651 unitários + 194 de integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM, o fluxo de recuperação de password e o envio de fotos de perfil (imagens falsas, tamanho, tipo).
+**886 testes** (unitários + integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM, o fluxo de recuperação de password e o envio de fotos de perfil (imagens falsas, tamanho, tipo).
 
 <details>
 <summary>API</summary>

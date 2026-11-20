@@ -9,6 +9,7 @@ import re
 import bcrypt
 import psycopg
 
+from multistore_ai_assistant.api.auth import BUMP_TOKEN_VERSION
 from multistore_ai_assistant.api.avatars import avatar_url, remove_file
 from multistore_ai_assistant.api.permissions import (
     MAX_CREATED_PER_USER,
@@ -193,7 +194,10 @@ def update_user(actor: dict, user_id: int, modules: list[str] | None = None,
         if password:
             _password_ok(target["username"], password)
             hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            conn.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hashed, user_id))
+            conn.execute(
+                f"UPDATE users SET password_hash = %s, {BUMP_TOKEN_VERSION} WHERE id = %s",   # revoga as sessões dela
+                (hashed, user_id),
+            )
         return _get(conn, user_id)
 
 

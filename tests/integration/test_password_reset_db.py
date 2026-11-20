@@ -58,6 +58,23 @@ def test_full_flow_by_email(user):
     assert authenticate(TMP, "NovaPass2026") and not authenticate(TMP, "Antiga2026")
 
 
+def test_password_reset_revokes_existing_sessions(user):
+    """Repor a password pelo link invalida JWTs emitidos antes."""
+    from fastapi.testclient import TestClient
+
+    from multistore_ai_assistant.api import main as api
+    from multistore_ai_assistant.api.auth import create_token, load_user
+
+    old = create_token(load_user(TMP))
+    client = TestClient(api.app)
+    assert client.get("/me", headers={"Authorization": "Bearer " + old}).status_code == 200
+    token = request_reset(EMAIL)["token"]
+    assert reset_password(token, "NovaPass2026") == TMP
+    assert client.get("/me", headers={"Authorization": "Bearer " + old}).status_code == 401
+    login = client.post("/login", json={"username": TMP, "password": "NovaPass2026"})   # logo a seguir
+    assert client.get("/me", headers={"Authorization": "Bearer " + login.json()["token"]}).status_code == 200
+
+
 def test_request_by_username_also_works(user):
     assert request_reset(TMP)["email"] == EMAIL
 

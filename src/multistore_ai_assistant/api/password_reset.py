@@ -17,6 +17,7 @@ import secrets
 
 import bcrypt
 
+from multistore_ai_assistant.api.auth import BUMP_TOKEN_VERSION
 from multistore_ai_assistant.api.errors import ApiError
 from multistore_ai_assistant.api.permissions import is_demo
 from multistore_ai_assistant.api.profile import PasswordError, check_new_password
@@ -89,7 +90,10 @@ def reset_password(token: str, new_password: str) -> str:
         except PasswordError as e:
             raise ApiError(e.code, 400, str(e), **e.params) from None
         hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-        conn.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hashed, user_id))
+        conn.execute(
+            f"UPDATE users SET password_hash = %s, {BUMP_TOKEN_VERSION} WHERE id = %s",   # revoga as sessões
+            (hashed, user_id),
+        )
         # Gasta este token e qualquer outro pendente da mesma conta
         conn.execute("UPDATE password_resets SET used_at = now() WHERE user_id = %s AND used_at IS NULL",
                      (user_id,))

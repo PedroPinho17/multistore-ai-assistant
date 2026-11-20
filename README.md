@@ -26,7 +26,7 @@ Managers of a (fictional) Portuguese restaurant group ask questions in **Portugu
 - **RAG with pgvector**, a **SQL cache** for repeated questions in any of the four languages, and a **👎 review loop** where a reviewer fixes the SQL, tests it and teaches the assistant.
 - **Sales forecasting** with real weather (Open-Meteo) and Portuguese holidays, plus ingredient order suggestions.
 - **Product-ready web app** (Vue, no build step): streaming answers, charts, follow-up suggestions, saved conversations, accounts and modules, observability dashboard, password reset by email, dark mode, four languages, accessible, mobile.
-- **Tested and reproducible:** 845 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
+- **Tested and reproducible:** 886 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
 
 | Answer with chart and table | Store manager: RLS + the SQL used |
 |---|---|
@@ -78,7 +78,7 @@ Design decisions (why Groq and not a local model, why XLM-R, why RLS with a sign
 | **Browser** | CSP, `X-Frame-Options: DENY`, `nosniff`, no referrer, CDN scripts pinned with Subresource Integrity, session token in `sessionStorage`, CSV formula-injection guard. |
 | **Infra** | No secrets in code; the database port is bound to `127.0.0.1`. |
 
-Known limits (fine for a demo): in-memory rate limiter (use Redis with several workers), JWTs can't be revoked before they expire, and the no-build Vue needs `'unsafe-eval'` in the CSP.
+Known limits (fine for a demo): in-memory rate limiter (use Redis with several workers), and the no-build Vue needs `'unsafe-eval'` in the CSP. Password changes and resets revoke older JWTs: each token carries the account's `token_version`, which every change bumps (the user who changed their password gets a fresh token).
 
 ## Results
 
@@ -179,7 +179,7 @@ uv run pytest tests/unit       # no database, no LLM, no models (~6 s)
 uv run pytest --cov            # with coverage
 ```
 
-**845 tests** (651 unit + 194 integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback, the password reset flow and profile photo uploads (fake images, size, type).
+**886 tests** (unit + integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback, the password reset flow and profile photo uploads (fake images, size, type).
 
 <details>
 <summary>API</summary>

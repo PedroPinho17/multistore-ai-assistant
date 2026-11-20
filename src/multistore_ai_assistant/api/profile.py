@@ -4,7 +4,7 @@ Tudo filtrado pelo username do token (nunca por um id vindo do cliente).
 """
 import bcrypt
 
-from multistore_ai_assistant.api.auth import authenticate
+from multistore_ai_assistant.api.auth import BUMP_TOKEN_VERSION, authenticate
 from multistore_ai_assistant.api.avatars import avatar_url
 from multistore_ai_assistant.db.pool import connection
 
@@ -47,7 +47,7 @@ def get_profile(user: dict) -> dict:
     visible = {"admin": stores_total, "imperador": stores_total, "marca": stores_brand,
                "loja": 1}.get(user["role"], 0)
     return {
-        **{k: v for k, v in user.items() if k != "id"},
+        **{k: v for k, v in user.items() if k not in ("id", "token_version")},
         "brand_name": brand[0] if brand else (store[1] if store else None),
         "store_name": store[0] if store else None,
         "visible_stores": visible,
@@ -85,14 +85,24 @@ def check_new_password(username: str, current: str, new: str) -> None:
         raise PasswordError("pw_mix", "Usa letras e números (ou símbolos) na palavra-passe.")
 
 
-def change_password(username: str, current: str, new: str) -> None:
-    """Confirma a password atual e grava o novo hash bcrypt."""
+def change_password(username: str, current: str, new: str) -> int | None:
+    """Confirma a password atual, grava o novo hash bcrypt e revoga as sessões abertas.
+
+    Returns:
+        A nova ``token_version`` (para emitir o token de quem mudou), ou ``None``
+        se a conta desapareceu entretanto.
+    """
     if not authenticate(username, current):
         raise PasswordError("pw_wrong_current", "A palavra-passe atual está errada.")
     check_new_password(username, current, new)
     hashed = bcrypt.hashpw(new.encode(), bcrypt.gensalt()).decode()
     with _conn() as conn:
-        conn.execute("UPDATE users SET password_hash = %s WHERE username = %s", (hashed, username))
+        row = conn.execute(
+            f"UPDATE users SET password_hash = %s, {BUMP_TOKEN_VERSION} "
+            "WHERE username = %s RETURNING token_version",
+            (hashed, username),
+        ).fetchone()
+    return row[0] if row else None
 
 
 def delete_all_conversations(username: str) -> int:

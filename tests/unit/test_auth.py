@@ -27,7 +27,7 @@ def test_token_roundtrip():
 def test_token_only_carries_identity():
     """Âmbito e módulos não vão no token: vêm da BD em cada pedido."""
     payload = jwt.decode(auth.create_token(LOJA), auth.SECRET, algorithms=["HS256"])
-    assert set(payload) == {"sub", "role", "iat", "exp"}
+    assert set(payload) == {"sub", "role", "tv", "iat", "exp"}
 
 
 def test_profile_comes_from_the_database_not_the_token(fake_users):
@@ -57,7 +57,8 @@ def _forge(payload: dict, secret: str | None = None) -> str:
 
 def _base(**extra) -> dict:
     now = datetime.now(UTC)
-    return {**LOJA, "sub": LOJA["username"], "iat": now, "exp": now + timedelta(hours=1), **extra}
+    return {**LOJA, "sub": LOJA["username"], "tv": LOJA["token_version"], "iat": now,
+            "exp": now + timedelta(hours=1), **extra}
 
 
 @pytest.mark.parametrize("token_factory", [
@@ -65,11 +66,16 @@ def _base(**extra) -> dict:
     lambda: _forge(_base(), secret="another-secret-that-is-long-enough-123456"),     # assinatura errada
     lambda: _forge({k: v for k, v in _base().items() if k != "exp"}),                # sem exp
     lambda: _forge({k: v for k, v in _base().items() if k != "sub"}),                # sem sub
+    lambda: _forge({k: v for k, v in _base().items() if k != "tv"}),                 # sem tv (token antigo)
+    lambda: _forge(_base(tv="0")),                                                   # tv não é inteiro
+    lambda: _forge(_base(tv=False)),                                                 # False == 0 em Python
+    lambda: _forge(_base(tv=None)),
     lambda: _forge(_base(sub="nao.existe")),                                         # conta inexistente
     lambda: jwt.encode(_base(role="imperador"), None, algorithm="none"),            # alg=none
     lambda: auth.create_token(LOJA) + "x",                                           # adulterado
     lambda: "isto.nao.e-um-jwt",
-], ids=["expired", "wrong-secret", "no-exp", "no-sub", "unknown-user", "alg-none", "tampered", "garbage"])
+], ids=["expired", "wrong-secret", "no-exp", "no-sub", "no-tv", "tv-str", "tv-bool", "tv-null", "unknown-user",
+     "alg-none", "tampered", "garbage"])
 def test_invalid_tokens_are_rejected(token_factory):
     with pytest.raises(ApiError) as exc:
         auth.current_user(creds(token_factory()))
@@ -107,8 +113,8 @@ class FakeConn:
 
 
 HASH = bcrypt.hashpw(b"loja123", bcrypt.gensalt(rounds=4)).decode()
-# id, username, role, brand_id, store_id, modules, password_hash, active
-ROW = (3, "gerente.maia", "loja", None, 1, None, False, HASH, True)     # ..., modules, protected, hash, active
+# id, username, role, brand_id, store_id, modules, protected, token_version, password_hash, active
+ROW = (3, "gerente.maia", "loja", None, 1, None, False, 0, HASH, True)
 
 
 @pytest.fixture
@@ -124,12 +130,13 @@ def test_authenticate_ok(db):
     conn = db(ROW)
     assert auth.authenticate("gerente.maia", "loja123") == {
         "id": 3, "username": "gerente.maia", "role": "loja", "brand_id": None, "store_id": 1,
-        "modules": ["sql", "forecast", "orders", "users"], "protected": False}
+        "modules": ["sql", "forecast", "orders", "users"], "protected": False,
+        "token_version": 0}
     assert "last_login" in conn.queries[-1][0]          # regista a hora do login
 
 
 def test_authenticate_uses_saved_modules(db):
-    db((3, "gerente.maia", "loja", None, 1, ["forecast"], False, HASH, True))
+    db((3, "gerente.maia", "loja", None, 1, ["forecast"], False, 0, HASH, True))
     assert auth.authenticate("gerente.maia", "loja123")["modules"] == ["forecast"]
 
 
@@ -139,7 +146,7 @@ def test_authenticate_wrong_password(db):
 
 
 def test_disabled_account_cannot_log_in_and_still_checks_a_hash(db, monkeypatch):
-    db(ROW[:8] + (False,))
+    db(ROW[:9] + (False,))
     checked = []
     monkeypatch.setattr(auth, "_check_password", lambda pw, h: checked.append(h) or True)
     assert auth.authenticate("gerente.maia", "loja123") is None
@@ -156,7 +163,7 @@ def test_authenticate_unknown_user_still_checks_a_hash(db, monkeypatch):
 
 
 def test_authenticate_user_without_password(db):
-    db(ROW[:7] + (None, True))
+    db(ROW[:8] + (None, True))
     assert auth.authenticate("novo", "") is None
 
 
@@ -173,7 +180,7 @@ def test_username_is_a_bound_parameter(db):
 
 
 def test_load_user_only_returns_active_accounts(db):
-    conn = db(ROW[:7])
+    conn = db(ROW[:8])
     assert REAL_LOAD_USER("gerente.maia")["modules"] == ["sql", "forecast", "orders", "users"]
     assert "AND active" in conn.queries[0][0]
     db(None)
@@ -182,3 +189,42 @@ def test_load_user_only_returns_active_accounts(db):
 
 def test_public_user_hides_the_internal_id():
     assert "id" not in auth.public_user(LOJA) and auth.public_user(LOJA)["modules"]
+
+
+# ---------- Revogação: token_version ("tv") ----------
+
+def test_stale_token_is_rejected_after_a_password_change(fake_users):
+    """Mudar a password revoga sessões antigas sem esperar pela expiração do JWT."""
+    old = auth.create_token(LOJA)
+    fake_users["gerente.maia"]["token_version"] = 1            # a password mudou
+    with pytest.raises(ApiError) as exc:
+        auth.current_user(creds(old))
+    assert exc.value.status == 401
+
+
+def test_login_right_after_a_password_change_works(fake_users):
+    """Mesmo segundo, relógios diferentes: não interessa, só conta a versão."""
+    fake_users["gerente.maia"]["token_version"] = 7
+    fresh = auth.create_token(fake_users["gerente.maia"])      # como no /login, logo a seguir
+    assert auth.current_user(creds(fresh))["username"] == "gerente.maia"
+    assert jwt.decode(fresh, auth.SECRET, algorithms=["HS256"])["tv"] == 7
+
+
+def test_account_without_a_version_fails_closed(fake_users):
+    token = auth.create_token(LOJA)
+    fake_users["gerente.maia"]["token_version"] = None
+    with pytest.raises(ApiError):
+        auth.current_user(creds(token))
+
+
+def test_no_token_without_a_version():
+    with pytest.raises(KeyError):
+        auth.create_token({k: v for k, v in LOJA.items() if k != "token_version"})
+
+
+@pytest.mark.parametrize("claim,current,ok", [
+    (0, 0, True), (3, 3, True), (2, 3, False), (3, 2, False),
+    (None, 0, False), (0, None, False), ("0", 0, False), (False, 0, False), (True, 1, False), (1.0, 1, False),
+])
+def test_token_version_matches(claim, current, ok):
+    assert auth.token_version_matches(claim, current) is ok

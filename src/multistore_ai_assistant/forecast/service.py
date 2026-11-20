@@ -4,7 +4,7 @@ Filtra as previsões / encomendas às lojas que o perfil consegue ver
 (``SELECT id FROM stores`` já passa pelo RLS).
 """
 from ..db.query import run_query
-from .orders import suggest_orders
+from .orders import round_order_qty, suggest_orders
 from .predict import forecast
 
 
@@ -46,8 +46,13 @@ def orders_answer(user: dict | None, days: int = 7):
     agg = df.groupby(["ingredient", "unit"], as_index=False)[["needed", "stock", "to_order"]].sum()
     agg = agg.sort_values("to_order", ascending=False)
     columns = ["ingredient", "unit", "needed_7_days", "stock", "to_order"]
-    rows = [
-        tuple(round(x, 2) if isinstance(x, float) else x for x in r)
-        for r in agg.itertuples(index=False)
-    ]
+    rows = []
+    for ingredient, unit, needed, stock, to_order in agg.itertuples(index=False):
+        rows.append((
+            ingredient,
+            unit,
+            round(float(needed), 2),            # estimativa de consumo
+            round(float(stock), 2),
+            round_order_qty(to_order, unit),
+        ))
     return columns, rows
