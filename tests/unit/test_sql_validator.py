@@ -84,3 +84,49 @@ def test_rejects_very_long_sql():
 def test_error_message_names_the_function():
     with pytest.raises(InvalidSQL, match="set_config"):
         validate_sql("SELECT set_config('app.role', 'imperador', true)")
+
+
+# ---------- colunas timestamp comparadas com timestamp (planos rápidos com RLS) ----------
+# timestamp/date não é leakproof: com RLS o Postgres ignora as estatísticas e escolhe
+# planos lentos. O validador troca o outro lado da comparação por timestamp (mesmo valor).
+
+TIMESTAMP_REWRITES = {
+    "cast_date": ("SELECT 1 FROM sales s WHERE s.sold_at >= CAST('2026-10-01' AS DATE)",
+                  "SELECT 1 FROM sales AS s WHERE s.sold_at >= CAST('2026-10-01' AS TIMESTAMP)"),
+    "date_literal": ("SELECT 1 FROM sales WHERE sold_at < DATE '2026-11-01'",
+                     "SELECT 1 FROM sales WHERE sold_at < CAST('2026-11-01' AS TIMESTAMP)"),
+    "string": ("SELECT 1 FROM sales WHERE sold_at >= '2026-01-01'",
+               "SELECT 1 FROM sales WHERE sold_at >= CAST('2026-01-01' AS TIMESTAMP)"),
+    "column_on_right": ("SELECT 1 FROM sales WHERE CAST('2026-01-01' AS DATE) <= sold_at",
+                        "SELECT 1 FROM sales WHERE CAST('2026-01-01' AS TIMESTAMP) <= sold_at"),
+    "current_date": ("SELECT 1 FROM sales WHERE sold_at >= CURRENT_DATE",
+                     "SELECT 1 FROM sales WHERE sold_at >= CAST(CURRENT_DATE AS TIMESTAMP)"),
+    "date_trunc": ("SELECT 1 FROM sales WHERE sold_at >= date_trunc('month', current_date)",
+                   "SELECT 1 FROM sales WHERE sold_at >= CAST(DATE_TRUNC('MONTH', CURRENT_DATE) AS TIMESTAMP)"),
+    "between": ("SELECT 1 FROM sales WHERE sold_at BETWEEN DATE '2026-01-01' AND '2026-01-31'",
+                "SELECT 1 FROM sales WHERE sold_at BETWEEN CAST('2026-01-01' AS TIMESTAMP) "
+                "AND CAST('2026-01-31' AS TIMESTAMP)"),
+    "stock_updated_at": ("SELECT 1 FROM stock WHERE updated_at >= CAST('2026-11-01' AS DATE)",
+                         "SELECT 1 FROM stock WHERE updated_at >= CAST('2026-11-01' AS TIMESTAMP)"),
+    "inside_cte": ("WITH v AS (SELECT * FROM sales WHERE sold_at >= CAST('2026-01-01' AS DATE)) SELECT count(*) FROM v",
+                   "WITH v AS (SELECT * FROM sales WHERE sold_at >= CAST('2026-01-01' AS TIMESTAMP)) "
+                   "SELECT COUNT(*) FROM v"),
+}
+
+
+@pytest.mark.parametrize("sql,expected", TIMESTAMP_REWRITES.values(), ids=TIMESTAMP_REWRITES.keys())
+def test_timestamp_columns_are_compared_with_timestamps(sql, expected):
+    assert validate_sql(sql) == expected
+
+
+UNCHANGED = {
+    "date_column": "SELECT 1 FROM purchases WHERE ordered_at >= CAST('2026-01-01' AS DATE)",
+    "column_vs_column": "SELECT 1 FROM sales AS s JOIN stock AS k ON k.updated_at > s.sold_at",
+    "already_timestamp": "SELECT 1 FROM sales WHERE sold_at >= CAST('2026-01-01 10:00' AS TIMESTAMP)",
+    "select_list": "SELECT DATE_TRUNC('MONTH', sold_at) AS mes FROM sales",
+}
+
+
+@pytest.mark.parametrize("sql", UNCHANGED.values(), ids=UNCHANGED.keys())
+def test_other_comparisons_are_left_alone(sql):
+    assert validate_sql(sql) == sql
