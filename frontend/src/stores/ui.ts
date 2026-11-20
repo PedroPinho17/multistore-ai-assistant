@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { prefs, sessionStore } from '@/lib/storage'
-import { detectLang, isLang, isLoaded, loadLang, t as messages } from '@/i18n'
+import { detectLang, isLang, isLoaded, loadLang, shownLang, t as messages } from '@/i18n'
 import type { Lang, MessageTree } from '@/i18n/types'
 import type { AppConfig, Theme, ThemePref, ToastType } from '@/api/types'
 import { api } from '@/api/client'
@@ -212,8 +212,11 @@ export const useUiStore = defineStore('ui', () => {
     { immediate: true },
   )
 
+  // <html lang> = the language of the texts on screen, not just the chosen one: while the
+  // chosen language is missing (e.g. it failed to download) the English fallback is shown,
+  // and screen readers must read it as English.
   watch(
-    lang,
+    () => shownLang(lang.value),
     v => {
       document.documentElement.lang = v
     },

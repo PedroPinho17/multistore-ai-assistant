@@ -1,3 +1,4 @@
+import { shallowReactive } from 'vue'
 import { prefs } from '@/lib/storage'
 import type { Lang, MessageTree } from '@/i18n/types'
 
@@ -16,7 +17,10 @@ const LOADERS: Record<Lang, () => Promise<MessageTree>> = {
 
 export const LANG_CODES = Object.keys(LOADERS) as Lang[]
 
-const loaded: Partial<Record<Lang, MessageTree>> = {}
+// Reactive (shallow: the texts themselves need no proxies): t() reads it, so a computed
+// built on t() updates when a language finishes loading, even if the chosen language did
+// not change (e.g. it failed at start-up, English was shown, and it loads later).
+const loaded = shallowReactive<Partial<Record<Lang, MessageTree>>>({})
 const pending: Partial<Record<Lang, Promise<MessageTree>>> = {}
 
 export function isLang(v: unknown): v is Lang {
@@ -54,11 +58,19 @@ export function detectLang(): Lang {
 }
 
 /**
- * Texts of `lang`. Fallback while it is still downloading (or if it failed): English if
- * loaded, otherwise any language already loaded.
+ * The language actually on screen when `lang` is chosen: `lang` itself if loaded, otherwise
+ * (still downloading, or it failed) English if loaded, otherwise any loaded language. With
+ * nothing loaded yet, `lang`. Reactive, like t().
  */
+export function shownLang(lang: Lang): Lang {
+  if (loaded[lang]) return lang
+  if (loaded.en) return 'en'
+  return LANG_CODES.find(l => loaded[l]) ?? lang
+}
+
+/** Texts of `lang`, or of the fallback language shownLang() picks while it is missing. */
 export function t(lang: Lang): MessageTree {
-  const m = loaded[lang] ?? loaded.en ?? Object.values(loaded)[0]
+  const m = loaded[shownLang(lang)]
   if (!m) throw new Error('i18n: no language loaded yet (await loadLang() before mounting)')
   return m
 }

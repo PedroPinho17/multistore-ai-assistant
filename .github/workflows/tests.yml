@@ -32,6 +32,18 @@ jobs:
         run: npm run build
       - name: CSP — index.html sem scripts inline nem CDNs
         run: node scripts/check-csp-index.mjs
+      - name: Chart.js fora do código de arranque (só carregado a pedido)
+        run: node scripts/check-lazy-chunks.mjs
+      - name: Ficheiros de línguas iguais ao gerador (gen-locales.mjs)
+        run: |
+          node scripts/gen-locales.mjs
+          changed="$(git status --porcelain -- src/i18n/generated)"
+          if [ -n "$changed" ]; then
+            echo "::error::src/i18n/generated difere do que gen-locales.mjs gera. Corre 'node scripts/gen-locales.mjs' e faz commit:"
+            echo "$changed"
+            git --no-pager diff -- src/i18n/generated | head -50
+            exit 1
+          fi
 
   unit:
     runs-on: ubuntu-latest

@@ -102,6 +102,27 @@ describe('languages are loaded on demand', () => {
     expect(i18n.t('fr').send).toBe(fr.send)
   })
 
+  it('the texts follow a language that loads later, even if the chosen language did not change', async () => {
+    // Start-up: the Portuguese chunk failed, main.ts fell back to English; lang is still 'pt'
+    vi.resetModules()
+    const i18n = await import('@/i18n')
+    await i18n.loadLang('en')
+    prefs.set('lang', 'pt')
+    const { useUiStore: freshUi } = await import('@/stores/ui')
+    setActivePinia(createPinia())
+    const ui = freshUi()
+    expect(ui.lang).toBe('pt')
+    expect(ui.t.send).toBe(en.send) // English while Portuguese is missing
+    await nextTick()
+    expect(document.documentElement.lang).toBe('en') // screen readers: the text is English
+
+    await ui.setLang('pt', false) // the user picks Portuguese again: now it downloads
+    expect(ui.lang).toBe('pt') // unchanged…
+    expect(ui.t.send).toBe(pt.send) // …but the texts are Portuguese now
+    await nextTick()
+    expect(document.documentElement.lang).toBe('pt')
+  })
+
   it('switching language keeps the current one until the new one is loaded; last switch wins', async () => {
     vi.resetModules()
     const i18n = await import('@/i18n')
@@ -245,15 +266,26 @@ describe('admin metrics', () => {
     expect(adm.loading).toBe(false)
   })
 
-  it('"updated at" uses the chosen language, not the browser locale', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 10, 20, 15, 5))
+  it('"updated at" is formatted with the chosen language\'s locale, not the browser\'s', async () => {
+    // The four app locales all write 15:05, so the formatted text proves nothing: check the
+    // locale handed to the formatter (the old code passed undefined = browser locale).
     loginAs('pedro', ['observability'])
     const reply = serveByDays()
     reply('7').resolve(metrics(7))
     const adm = useAdminStore()
     await adm.load(7)
-    expect(adm.updated).toBe('15:05') // en-GB; the browser default (en-US) would say 03:05 PM
+    const spy = vi.spyOn(Date.prototype, 'toLocaleTimeString')
+    try {
+      for (const [lang, locale] of [['fr', 'fr-FR'], ['pt', 'pt-PT'], ['en', 'en-GB']] as const) {
+        await useUiStore().setLang(lang, false)
+        spy.mockClear()
+        expect(adm.updated).not.toBeNull() // re-formatted for the new language
+        expect(spy).toHaveBeenCalledTimes(1)
+        expect(spy.mock.calls[0]![0]).toBe(locale)
+      }
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('the period buttons are disabled while loading', async () => {
