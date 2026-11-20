@@ -115,8 +115,8 @@ const ChatPage = {
     <footer class="composer">
       <div class="composer-inner">
         <textarea id="question" name="question" :aria-label="t.questionLabel" v-model="question" rows="1" maxlength="500" :placeholder="t.placeholder"
-                  @keydown.enter.exact.prevent="send()" @input="autoGrow" :disabled="loading"></textarea>
-        <button class="send" @click="send()" :disabled="loading || !question.trim()" :title="t.send" :aria-label="t.send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+                  @keydown.enter.exact.prevent="send()" @input="autoGrow" :disabled="loading || streaming"></textarea>
+        <button class="send" @click="send()" :disabled="loading || streaming || !question.trim()" :title="t.send" :aria-label="t.send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
       </div>
       <div class="hint">{{ t.hint }}</div>
     </footer>

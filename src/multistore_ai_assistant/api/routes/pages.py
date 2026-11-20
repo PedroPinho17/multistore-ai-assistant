@@ -14,7 +14,8 @@ WEB_DIR = Path(__file__).resolve().parents[4] / "web"
 router = APIRouter(include_in_schema=False)
 
 # Páginas da UI (além de "/"); têm de coincidir com ROUTES em web/static/js/app.js
-UI_PATHS = frozenset({"/login", "/reset-password", "/chat", "/profile", "/users", "/admin", "/settings", "/review"})
+UI_PATHS = frozenset({"/login", "/reset-password", "/chat", "/dashboard", "/profile",
+                      "/users", "/admin", "/settings", "/review"})
 
 
 def index_page() -> FileResponse:

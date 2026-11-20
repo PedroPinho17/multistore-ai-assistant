@@ -45,13 +45,17 @@ def complete(messages: list[dict], temperature: float, on_token=None) -> str:
     stream = client.chat.completions.create(model=MODEL, messages=messages, temperature=temperature,
                                             stream=True, stream_options={"include_usage": True})
     parts, usage = [], None
-    for chunk in stream:
-        if getattr(chunk, "usage", None):
-            usage = chunk
-        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-            piece = chunk.choices[0].delta.content
-            parts.append(piece)
-            on_token(piece)
+    try:
+        for chunk in stream:
+            if getattr(chunk, "usage", None):
+                usage = chunk
+            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                piece = chunk.choices[0].delta.content
+                parts.append(piece)
+                on_token(piece)          # levanta se o cliente do streaming se desligou
+    finally:
+        if close := getattr(stream, "close", None):
+            close()                      # fecha já o pedido HTTP ao LLM (não espera pelo garbage collector)
     record_llm(usage)
     return "".join(parts).strip()
 

@@ -6,10 +6,10 @@ const DEMO_ACCOUNTS = [
   { user: "gerente.maia", pass: "loja123", role: "loja", icon: "store" },
 ];
 // Páginas da UI: têm de coincidir com UI_PATHS em api/routes/pages.py (o servidor devolve a UI nestes caminhos)
-const ROUTES = { "/": "home", "/login": "login", "/reset-password": "reset", "/chat": "chat", "/profile": "profile",
-                 "/users": "users", "/admin": "admin", "/settings": "settings", "/review": "review" };
+const ROUTES = { "/": "home", "/login": "login", "/reset-password": "reset", "/chat": "chat", "/dashboard": "dashboard",
+                 "/profile": "profile", "/users": "users", "/admin": "admin", "/settings": "settings", "/review": "review" };
 const PATHS = Object.fromEntries(Object.entries(ROUTES).map(([path, view]) => [view, path]));
-const PRIVATE_VIEWS = ["chat", "profile", "users", "admin", "settings", "review"];
+const PRIVATE_VIEWS = ["chat", "dashboard", "profile", "users", "admin", "settings", "review"];
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const KIND_ORDER = ["sql", "forecast", "orders", "no_sql", "denied", "error"];
 
@@ -43,10 +43,11 @@ let nextId = 1;
 const charts = {};
 
 const RootApp = {
-  mixins: [AdminMixin, SettingsMixin, ReviewMixin],
+  mixins: [AdminMixin, DashboardMixin, SettingsMixin, ReviewMixin],
   data() {
     return {
       lang: prefs.get("lang") || (Object.keys(TEXTS).find(l => navigator.language.startsWith(l)) || "en"),
+      exportingPdf: false,
       // Tema: escolha (claro / escuro / sistema) e o que está aplicado agora
       themePref: ["light", "dark", "system"].includes(prefs.get("theme")) ? prefs.get("theme") : "system",
       theme: (prefs.get("theme") === "light" || prefs.get("theme") === "dark") ? prefs.get("theme")
@@ -56,7 +57,9 @@ const RootApp = {
       token: store.get("token"),
       user: JSON.parse(store.get("user") || "null"),
       username: "", password: "", loginError: "", loggingIn: false, shake: false,
-      question: "", messages: [], loading: false, stepIndex: 0, stepTimer: null, welcomeDone: false,
+      // loading: o "a pensar…" (até chegar o 1.º texto). streaming: há uma pergunta em curso, do envio
+      // até ao done/error. A caixa de texto e o botão ficam bloqueados enquanto streaming for true.
+      question: "", messages: [], loading: false, streaming: false, stepIndex: 0, stepTimer: null, welcomeDone: false,
       alerts: [], alertsOpen: true,
       conversations: [], currentConv: null, sidebarOpen: false,
       editingId: null, editTitle: "", announce: "",
@@ -135,12 +138,12 @@ const RootApp = {
     // Título e subtítulo do topo das páginas privadas
     pageTitle() {
       if (this.view === "chat") return this.conversations.find(c => c.id === this.currentConv)?.title || this.t.newChat;
-      return { profile: this.t.p.title, users: this.t.um.title, admin: this.t.adm.title, settings: this.t.st.title,
-               review: this.t.rv.title }[this.view] || this.t.title;
+      return { dashboard: this.t.dash.title, profile: this.t.p.title, users: this.t.um.title, admin: this.t.adm.title,
+               settings: this.t.st.title, review: this.t.rv.title }[this.view] || this.t.title;
     },
     pageSub() {
-      return { chat: this.t.title, profile: this.scopeText, users: this.t.um.sub, admin: this.t.adm.sub,
-               settings: this.t.st.sub, review: this.t.rv.sub }[this.view] || "";
+      return { chat: this.t.title, dashboard: this.t.dash.sub, profile: this.scopeText, users: this.t.um.sub,
+               admin: this.t.adm.sub, settings: this.t.st.sub, review: this.t.rv.sub }[this.view] || "";
     },
     effectiveAccent() { return this.accent || this.appConfig.default_accent || "green"; },
     showDemo() { return this.appConfig.show_demo_accounts !== false;
@@ -196,11 +199,13 @@ const RootApp = {
         (document.activeElement === dlgOk ? dlgCancel : dlgOk)?.focus();
       }
     },
+    // type: "ok" (verde, ✓) ou "error" (vermelho, !). Predefinição = error para os catch.
     toast(text, type = "error") {
+      const kind = type === "ok" ? "ok" : "error";
       const id = nextId++;
-      this.toasts.push({ id, text, type });
+      this.toasts.push({ id, text, type: kind });
       if (this.toasts.length > 4) this.toasts.shift();
-      setTimeout(() => this.dismissToast(id), type === "error" ? 6000 : 3500);
+      setTimeout(() => this.dismissToast(id), kind === "error" ? 6000 : 3500);
     },
     dismissToast(id) { this.toasts = this.toasts.filter(x => x.id !== id); },
 
@@ -244,6 +249,7 @@ const RootApp = {
       document.title = this.t.pageTitles[v];
       if (prev === "home" && v !== "home") this.stopDemo();
       if (prev === "admin" && v !== "admin") this.destroyAdminCharts();
+      if (prev === "dashboard" && v !== "dashboard") this.destroyDashCharts();
       if (v !== prev) { window.scrollTo(0, 0); const ps = document.getElementById("page-scroll"); if (ps) ps.scrollTop = 0; }
       this.userMenu = false; this.sidebarOpen = false;
       if (v === "home") this.startDemo();
@@ -265,6 +271,7 @@ const RootApp = {
         this.loadConversations();
         this.$nextTick(() => document.getElementById("question")?.focus());
       }
+      if (v === "dashboard") this.loadDashboard();
       if (v === "profile") {
         this.pw = { current: "", new: "", confirm: "", show: false, saving: false, error: "", ok: false };
         this.loadProfile();
@@ -568,7 +575,7 @@ const RootApp = {
     },
     async openConversation(id) {
       this.sidebarOpen = false;
-      if (this.loading || id === this.currentConv) return;
+      if (this.loading || this.streaming || id === this.currentConv) return;
       try {
         const msgs = await this.api(`/conversations/${id}`);
         this.clearCharts();
@@ -668,56 +675,78 @@ const RootApp = {
       };
     },
 
-    // Lê o /ask/stream (Server-Sent Events). Devolve a mensagem criada, ou null se o servidor não suportar.
+    // Lê o SSE do /ask/stream (o parsing está em sse.js, testado com node). Devolve a mensagem criada,
+    // ou null se o browser não ler respostas em streaming. Um 404 (p.ex. conversa apagada noutro
+    // separador) é um erro normal: não repete o pedido noutro endpoint.
+    // Forecast/orders e recusas não enviam "token": o texto chega só no "done" e tem de aparecer na mesma.
     async streamAsk(q) {
       let res;
+      const knownConvs = new Set(this.conversations.map(c => c.id));
+      const body = JSON.stringify({ question: q, lang: this.lang, conversation_id: this.currentConv });
+      const headers = { "Content-Type": "application/json", "Accept-Language": this.lang, Authorization: "Bearer " + this.token };
       try {
-        res = await fetch("/ask/stream", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept-Language": this.lang, Authorization: "Bearer " + this.token },
-          body: JSON.stringify({ question: q, lang: this.lang, conversation_id: this.currentConv }),
-        });
+        res = await fetch("/ask/stream", { method: "POST", headers, body });
       } catch { throw new Error(this.t.network); }
-      if (res.status === 404 || res.status === 405 || !res.body) return null;     // servidor antigo: usa o /ask
+      if (res.ok && !res.body) return null;                                       // sem ReadableStream: usa o /ask
       if (res.status === 401) { this.logout("login"); throw new Error(this.t.loginError); }
       if (!res.ok) { let data = null; try { data = await res.json(); } catch {} throw this.httpError(res, data); }
 
       clearInterval(this.stepTimer);
-      const reader = res.body.getReader(), decoder = new TextDecoder();
-      let buffer = "", m = null, data = null, final = null;
+      let m = null, data = null, final = null;
       const handle = ev => {
         if (ev.type === "status") this.stepIndex = this.stepOf(ev.step);
         else if (ev.type === "data") data = ev;
         else if (ev.type === "token") {
-          if (!m) { m = this.addBot({ question: q }); this.loading = false; }
+          if (!m) { m = this.addBot({ question: q }); this.loading = false; }   // o "a pensar…" dá lugar ao texto
           m.text += ev.text; m.shown = m.text; this.scrollDown();
-        } else if (ev.type === "done") final = ev;
-        else if (ev.type === "error") final = { error: ev.message };
+        } else if (ev.type === "done") { final = ev; this.loading = false; }
+        else if (ev.type === "error") { final = { error: ev.message }; this.loading = false; }
       };
+      const parser = createSseParser(handle, (raw, err) => console.warn("SSE: evento com JSON inválido ignorado", err, raw.slice(0, 200)));
+      const reader = res.body.getReader(), decoder = new TextDecoder();
+      let finished = false;
       try {
         for (;;) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let cut;
-          while ((cut = buffer.indexOf("\n\n")) >= 0) {
-            const line = buffer.slice(0, cut).trim(); buffer = buffer.slice(cut + 2);
-            if (line.startsWith("data:")) { try { handle(JSON.parse(line.slice(5))); } catch {} }
-          }
+          let chunk;
+          try { chunk = await reader.read(); }
+          catch { break; }                 // ligação cortada a meio (só os erros de leitura; os do handle sobem)
+          if (chunk.value) parser.push(decoder.decode(chunk.value, { stream: true }));
+          if (chunk.done) { parser.push(decoder.decode()); parser.end(); finished = true; break; }
         }
-      } catch {}   // ligação cortada a meio: mostra a mensagem traduzida, não o "network error" do browser
-      if (!final) final = { error: this.t.network };
+      } finally {
+        if (!finished) reader.cancel().catch(() => {});   // erro no handle ou ligação cortada: fecha o pedido
+      }
+      if (!final) {
+        // A ligação caiu antes do done/error. O servidor pode ter acabado e gravado a troca: recarrega a
+        // lista e continua na conversa (a próxima pergunta não abre outra).
+        final = { error: this.t.network };
+        await this.recoverConversation(q, knownConvs);
+      }
       if (final.conversation_id) { this.currentConv = final.conversation_id; this.loadConversations(); }
       const fields = this.botFields(q, { ...(data || {}), ...final });
       if (m) Object.assign(m, fields);
       else m = this.addBot(fields);
-      m.shown = m.text;   // sem tokens (p.ex. erro antes da resposta) o texto também tem de aparecer
+      this.loading = false;
+      m.shown = m.text || "";   // sem tokens (forecast/orders/erro): o texto do "done" tem de aparecer
       return m;
+    },
+
+    // A ligação do streaming caiu sem "done". Se esta pergunta abriu uma conversa nova e o servidor
+    // a gravou, ela aparece na lista (nova, com o título da pergunta): passa a ser a conversa atual.
+    async recoverConversation(q, knownIds) {
+      await this.loadConversations();
+      if (this.currentConv) return;                       // já estava numa conversa: continua nela
+      const chars = Array.from(q);                         // o servidor corta em 60 caracteres (não em UTF-16)
+      const title = chars.length > 60 ? chars.slice(0, 60).join("") + "…" : q;
+      const fresh = this.conversations.find(c => !knownIds.has(c.id) && c.title === title);
+      if (fresh) this.currentConv = fresh.id;
     },
 
     async send(text) {
       const q = (text ?? this.question).trim();
-      if (!q || this.loading) return;
+      // Uma pergunta de cada vez: o "loading" desce no 1.º token, mas a resposta ainda está a chegar
+      if (!q || this.loading || this.streaming) return;
+      this.streaming = true;
       this.messages.push({ id: nextId++, from: "user", text: q, time: this.now() });
       this.question = ""; this.$nextTick(this.autoGrow);
       this.loading = true; this.startSteps(); this.scrollDown();
@@ -734,12 +763,34 @@ const RootApp = {
       } catch (e) {
         m = this.addBot({ text: e.message, error: true });
       } finally {
-        clearInterval(this.stepTimer); this.loading = false;
+        // Só há um pedido de cada vez (ver acima), por isso isto só mexe no estado deste
+        clearInterval(this.stepTimer); this.loading = false; this.streaming = false;
       }
       if (streamed) m.done = true; else await this.typeOut(m);
       this.announce = m.text;
       if (m.chart) this.$nextTick(() => this.drawChart(m));
       this.$nextTick(() => { this.scrollDown(); document.getElementById("question")?.focus(); });
+    },
+
+    async exportPdf() {
+      if (!this.currentConv || this.exportingPdf) return;
+      this.exportingPdf = true;
+      try {
+        const res = await fetch(`/conversations/${this.currentConv}/pdf`, {
+          headers: { Authorization: "Bearer " + this.token, "Accept-Language": this.lang },
+        });
+        if (res.status === 401) { this.logout("login"); throw new Error(this.t.loginError); }
+        if (!res.ok) { let data = null; try { data = await res.json(); } catch {} throw this.httpError(res, data); }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (this.conversations.find(c => c.id === this.currentConv)?.title || "conversation") + ".pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+        this.toast(this.t.pdfDone, "ok");
+      } catch (e) { this.toast(e.message, "error"); }
+      finally { this.exportingPdf = false; }
     },
 
     async explain(m) {
@@ -755,10 +806,16 @@ const RootApp = {
       catch (e) { this.toast(e.status === 400 ? this.t.errors.badSql : e.message); }
     },
     async copy(m) {
-      try { await navigator.clipboard.writeText(m.text); m.copied = true; setTimeout(() => (m.copied = false), 1500); } catch {}
+      try {
+        await navigator.clipboard.writeText(m.text);
+        m.copied = true; setTimeout(() => (m.copied = false), 1500);
+      } catch { this.toast(this.t.copyFailed); }   // p.ex. o browser não deu acesso à área de transferência
     },
     async copySql(m) {
-      try { await navigator.clipboard.writeText(m.sql); m.sqlCopied = true; setTimeout(() => (m.sqlCopied = false), 1500); } catch {}
+      try {
+        await navigator.clipboard.writeText(m.sql);
+        m.sqlCopied = true; setTimeout(() => (m.sqlCopied = false), 1500);
+      } catch { this.toast(this.t.copyFailed); }
     },
     downloadCsv(m) {
       // Prefixo ' evita "CSV injection" (fórmulas ao abrir no Excel)
@@ -778,8 +835,13 @@ const RootApp = {
 
     // Gráfico quando há 2+ linhas, 1.ª coluna = rótulo e última coluna = número
     canChart(r) {
-      if (!r.columns || !r.rows || r.rows.length < 2 || r.rows.length > 60 || r.columns.length < 2) return false;
-      return r.rows.every(row => row[row.length - 1] !== null && !isNaN(parseFloat(row[row.length - 1])));
+      try {
+        if (!r || !Array.isArray(r.columns) || !Array.isArray(r.rows)) return false;
+        if (r.rows.length < 2 || r.rows.length > 60 || r.columns.length < 2) return false;
+        return r.rows.every(row => Array.isArray(row)
+          && row[row.length - 1] !== null && row[row.length - 1] !== ""
+          && !isNaN(parseFloat(row[row.length - 1])));
+      } catch { return false; }
     },
     // Coluna dos rótulos: a 1.ª que varia ("loja | mês | total" de uma só loja → mês)
     labelCol(m) {
@@ -840,8 +902,8 @@ const RootApp = {
 // O estado e as ações vivem na instância raiz (um store único, sem build nem Pinia);
 // connectPages dá a cada página acesso a eles, como um mapState/mapActions automático.
 const PAGES = { "home-page": HomePage, "login-page": LoginPage, "app-shell": AppShell, "chat-page": ChatPage,
-                "profile-page": ProfilePage, "settings-page": SettingsPage, "users-page": UsersPage,
-                "admin-page": AdminPage, "review-page": ReviewPage, "reset-page": ResetPage };
+                "dashboard-page": DashboardPage, "profile-page": ProfilePage, "settings-page": SettingsPage,
+                "users-page": UsersPage, "admin-page": AdminPage, "review-page": ReviewPage, "reset-page": ResetPage };
 
 function connectPages(root, pages) {
   const sources = [root, ...(root.mixins || [])];

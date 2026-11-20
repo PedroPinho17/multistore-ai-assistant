@@ -16,9 +16,10 @@ explain_limiter = RateLimiter(max_calls=10, per_seconds=60)   # 10 explicações
 review_limiter = RateLimiter(max_calls=60, per_seconds=60)    # 60 pedidos de revisão / min (lista, testar, ensinar)
 forgot_limiter = RateLimiter(max_calls=5, per_seconds=900)    # 5 pedidos de recuperação / 15 min (por IP e por email)
 reset_limiter = RateLimiter(max_calls=10, per_seconds=900)    # 10 tentativas de usar um link / 15 min por IP
+pdf_limiter = RateLimiter(max_calls=5, per_seconds=60)        # 5 PDFs / min por utilizador (gerar um PDF custa)
 
 LIMITERS = (login_limiter, ask_limiter, conv_limiter, password_limiter, users_limiter, admin_limiter,
-            explain_limiter, review_limiter, forgot_limiter, reset_limiter)
+            explain_limiter, review_limiter, forgot_limiter, reset_limiter, pdf_limiter)
 
 
 def client_ip(request: Request) -> str:

@@ -19,12 +19,17 @@ class Store:
     def __init__(self):
         self.convs = {}       # id -> (owner, title)
         self.messages = []    # (conv_id, role, content, sql, kind)
+        self.results = []     # result (JSON) gravado com cada mensagem
+
+    def exchange(self, c, question, answer, s=None, k=None, rid=None, res=None):
+        """Pergunta + resposta gravadas juntas (como o ``add_exchange`` faz numa transação)."""
+        self.messages += [(c, "user", question, None, None), (c, "assistant", answer, s, k)]
+        self.results += [None, res]
 
     def install(self, mp):
         patch_route(mp, "owns", lambda u, c: self.convs.get(c, (None,))[0] == u)
         patch_route(mp, "create_conversation", self.create)
-        patch_route(mp, "add_message", lambda c, r, t, s=None, k=None, rid=None:
-                   self.messages.append((c, r, t, s, k)))
+        patch_route(mp, "add_exchange", self.exchange)
         patch_route(mp, "get_history", lambda c: [("q anterior", "SELECT 1")])
         patch_route(mp, "list_conversations", lambda u: [
             {"id": i, "title": t} for i, (o, t) in self.convs.items() if o == u])

@@ -13,6 +13,9 @@ const AppShell = {
         <nav class="rail-nav" :aria-label="t.nav.main">
           <a href="/chat" class="nav-item" :class="{ active: view === 'chat' }" :aria-current="view === 'chat' ? 'page' : null">
             <svg class="i" aria-hidden="true"><use href="#i-chat"/></svg> <span>{{ t.nav.chat }}</span></a>
+          <a v-if="hasModule('sql') || hasModule('forecast')" href="/dashboard" class="nav-item"
+             :class="{ active: view === 'dashboard' }" :aria-current="view === 'dashboard' ? 'page' : null">
+            <svg class="i" aria-hidden="true"><use href="#i-trend"/></svg> <span>{{ t.nav.dashboard }}</span></a>
           <a href="/users" class="nav-item" :class="{ active: view === 'users' }" :aria-current="view === 'users' ? 'page' : null" v-if="hasModule('users')">
             <svg class="i" aria-hidden="true"><use href="#i-users"/></svg> <span>{{ t.nav.users }}</span></a>
           <a href="/review" class="nav-item" :class="{ active: view === 'review' }" :aria-current="view === 'review' ? 'page' : null" v-if="hasModule('teach')">
@@ -83,8 +86,18 @@ const AppShell = {
           </div>
           <div class="topbar-actions">
             <template v-if="view === 'chat'">
-              <span class="status" :class="{ busy: loading }">{{ loading ? t.typingShort : t.online }}</span>
+              <span class="status" :class="{ busy: loading || streaming }">{{ loading || streaming ? t.typingShort : t.online }}</span>
+              <button v-if="currentConv" type="button" class="btn-soft sm" @click="exportPdf" :disabled="exportingPdf"
+                      :aria-label="t.exportPdf" :title="t.exportPdf">
+                <span v-if="exportingPdf" class="spinner" aria-hidden="true"></span>
+                <svg v-else class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                <span class="hide-sm">{{ t.exportPdf }}</span></button>
               <button type="button" class="btn-soft sm" @click="newConversation"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg> <span class="hide-sm">{{ t.newChat }}</span></button>
+            </template>
+            <template v-else-if="view === 'dashboard'">
+              <button type="button" class="btn-soft sm icon-only" @click="loadDashboard()" :disabled="dash.loading"
+                      :aria-label="t.dash.refresh" :title="t.dash.refresh">
+                <span v-if="dash.loading" class="spinner" aria-hidden="true"></span><svg v-else class="i" aria-hidden="true"><use href="#i-refresh"/></svg></button>
             </template>
             <button v-else-if="view === 'users' && !um.form && !user.demo" type="button" class="btn btn-primary sm" @click="openNewUser" :disabled="!um.options"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg> {{ t.um.newBtn }}</button>
             <button v-else-if="view === 'review'" type="button" class="btn-soft sm icon-only" @click="reloadTeach()" :disabled="rv.loading || ex.loading"
@@ -105,7 +118,9 @@ const AppShell = {
         <chat-page v-if="view === 'chat'"></chat-page>
 
         <div v-else class="page-scroll" id="page-scroll">
-          <profile-page v-if="view === 'profile'"></profile-page>
+          <dashboard-page v-if="view === 'dashboard'"></dashboard-page>
+
+          <profile-page v-else-if="view === 'profile'"></profile-page>
 
           <users-page v-else-if="view === 'users'"></users-page>
 

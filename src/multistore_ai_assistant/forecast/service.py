@@ -3,9 +3,33 @@
 Filtra as previsões / encomendas às lojas que o perfil consegue ver
 (``SELECT id FROM stores`` já passa pelo RLS).
 """
+import threading
+from datetime import date
+
 from ..db.query import run_query
 from .orders import round_order_qty, suggest_orders
 from .predict import forecast
+
+# Previsão de TODAS as lojas, por (dia, horizonte): o modelo só corre uma vez por dia
+# (~0,6 s). O filtro por lojas visíveis (RLS) é feito depois, em cada pedido.
+_forecast_cache: dict[tuple[date, int], object] = {}
+_forecast_lock = threading.Lock()
+
+
+def daily_forecast(days: int = 7):
+    """``forecast(days)`` de todas as lojas, guardada até mudar o dia."""
+    key = (date.today(), days)
+    with _forecast_lock:
+        if key not in _forecast_cache:
+            _forecast_cache.clear()                  # só o dia de hoje interessa
+            _forecast_cache[key] = forecast(days)
+        return _forecast_cache[key].copy()
+
+
+def clear_forecast_cache() -> None:
+    """Esquece a previsão guardada (p.ex. depois de treinar o modelo de novo; usado nos testes)."""
+    with _forecast_lock:
+        _forecast_cache.clear()
 
 
 def visible_stores(user: dict | None) -> list[int]:
@@ -21,7 +45,7 @@ def forecast_answer(user: dict | None, days: int = 7):
         ``(colunas, linhas)`` prontas para a UI / ``answer()``.
     """
     stores = visible_stores(user)
-    df = forecast(days)
+    df = daily_forecast(days)
     df = df[df["store_id"].isin(stores)]
     daily = df.groupby("day", as_index=False)["revenue"].sum()
     columns = ["day", "forecast_revenue_eur"]

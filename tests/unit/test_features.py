@@ -1,8 +1,13 @@
 """Streaming (/ask/stream), explicação do SQL (/explain), alertas (/alerts),
 perguntas de seguimento, cache de SQL no ``ask`` e a chave dessa cache (BD e LLM simulados)."""
+import asyncio
 import json
+import threading
+import time
+from decimal import Decimal
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import psycopg
 import pytest
@@ -12,6 +17,8 @@ from multistore_ai_assistant import observability as obs
 from multistore_ai_assistant.api import alerts as alerts_mod
 from multistore_ai_assistant.api import auth
 from multistore_ai_assistant.api import main as api
+from multistore_ai_assistant.api.routes import ask as ask_route
+from multistore_ai_assistant.api.schemas import AskIn
 from multistore_ai_assistant.assistant import ask as ask_mod
 from multistore_ai_assistant.assistant.question_key import question_key
 from multistore_ai_assistant.assistant.suggest import suggestions
@@ -34,7 +41,9 @@ def conversation(monkeypatch):
     patch_route(monkeypatch, "owns", lambda u, c: c == 7)
     patch_route(monkeypatch, "create_conversation", lambda u, q: 99)
     patch_route(monkeypatch, "get_history", lambda c: [])
-    patch_route(monkeypatch, "add_message", lambda *a, **k: saved.append(a))
+    def exchange(c, question, answer, s=None, k=None, rid=None, res=None):
+        saved.extend([(c, "user", question), (c, "assistant", answer, s, k, rid, res)])
+    patch_route(monkeypatch, "add_exchange", exchange)
     return saved
 
 
@@ -79,6 +88,208 @@ def test_stream_checks_the_conversation_before_streaming(conversation):
 
 def test_stream_requires_login():
     assert client.post("/ask/stream", json={"question": "q"}).status_code in (401, 403)
+
+
+def test_stream_without_token_events_still_sends_done(monkeypatch, conversation):
+    """Forecast/orders (e respostas sem streaming de texto) só enviam status/data/done."""
+    def orders_ask(question, user, lang, history, on_event=None):
+        on_event({"type": "status", "step": "classify"})
+        on_event({"type": "status", "step": "forecast"})
+        on_event({"type": "data", "kind": "orders", "sql": None,
+                  "columns": ["ingredient", "unit", "to_order"],
+                  "rows": [["Pão", "un", 12.0], ["Carne", "kg", 3.5]]})
+        on_event({"type": "status", "step": "answer"})
+        # sem eventos "token": o texto vai só no "done" (o UI tem de o mostrar na mesma)
+        return {"sql": None, "kind": "orders",
+                "columns": ["ingredient", "unit", "to_order"],
+                "rows": [["Pão", "un", 12.0], ["Carne", "kg", 3.5]],
+                "answer": "Encomenda pão e carne."}
+
+    patch_route(monkeypatch, "ask", orders_ask)
+    r = client.post("/ask/stream", json={"question": "O que devo encomendar?", "lang": "pt"}, headers=bearer())
+    events = sse_events(r)
+    assert "token" not in {e["type"] for e in events}
+    assert [e["type"] for e in events] == ["status", "status", "data", "status", "done"]
+    done = events[-1]
+    assert done["kind"] == "orders" and done["answer"] == "Encomenda pão e carne."
+    assert done["rows"][0][0] == "Pão" and done["conversation_id"] == 99
+
+
+def test_stream_done_with_nan_rows_is_still_valid_json(monkeypatch, conversation):
+    """NaN/Inf nas linhas não podem partir o JSON do SSE (senão o UI nunca vê o done)."""
+    def weird(question, user, lang, history, on_event=None):
+        on_event({"type": "data", "kind": "orders", "sql": None,
+                  "columns": ["ingredient", "to_order"], "rows": [["X", float("nan")]]})
+        return {"sql": None, "kind": "orders", "columns": ["ingredient", "to_order"],
+                "rows": [["X", float("nan")]], "answer": "ok"}
+
+    patch_route(monkeypatch, "ask", weird)
+    r = client.post("/ask/stream", json={"question": "encomendar", "lang": "pt"}, headers=bearer())
+    # O json.loads do Python ACEITA "NaN" (o JSON.parse do browser não): por isso é preciso
+    # ver o texto do stream e o valor convertido, não basta o parse correr sem erro.
+    assert "NaN" not in r.text and "Infinity" not in r.text
+    events = sse_events(r)
+    assert events[-1]["type"] == "done" and events[-1]["rows"][0][1] is None
+
+
+def test_there_is_only_one_stream_endpoint():
+    assert client.post("/chat/stream", json={"question": "q"}, headers=bearer()).status_code in (404, 405)
+
+
+def test_the_answer_rows_are_stored_with_the_message(monkeypatch, conversation):
+    """O PDF usa estas linhas: as que o utilizador viu, guardadas quando a resposta foi criada."""
+    patch_route(monkeypatch, "ask", streaming_ask)
+    client.post("/ask/stream", json={"question": "Marcas?", "lang": "pt"}, headers=bearer())
+    user_msg, answer_msg = conversation
+    assert len(user_msg) == 3                                          # a pergunta não tem resultado
+    assert json.loads(answer_msg[6]) == {"columns": ["marca"], "rows": [["A"], ["B"]], "truncated": False}
+
+
+# ---------- o cliente desliga-se a meio do streaming ----------
+
+class FakeRequest:
+    def __init__(self):
+        self.gone = False
+
+    async def is_disconnected(self):
+        return self.gone
+
+
+def endless_ask(state):
+    """Um "LLM" que nunca acaba de escrever: só para quando o on_event levantar."""
+    def fake(question, user, lang, history, on_event=None):
+        on_event({"type": "status", "step": "answer"})
+        try:
+            while True:
+                on_event({"type": "token", "text": "x"})
+                state["tokens"] += 1
+                time.sleep(0.005)
+        except ask_route.StreamCancelled:
+            state["stopped"] = True
+            raise
+    return fake
+
+
+def wait_for(condition, seconds=3.0):
+    deadline = time.monotonic() + seconds
+    while not condition() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    return condition()
+
+
+@pytest.mark.parametrize("how", ["polling", "starlette-cancels"])
+def test_disconnect_stops_the_worker_and_the_llm(monkeypatch, conversation, fake_request_log, how):
+    state = {"tokens": 0, "stopped": False}
+    patch_route(monkeypatch, "ask", endless_ask(state))
+    request = FakeRequest()
+    response = ask_route.ask_stream(AskIn(question="q", lang="pt"), request, dict(LOJA))
+
+    async def consume():
+        it = response.body_iterator
+        first = await it.__anext__()
+        if how == "polling":
+            request.gone = True
+            async for _ in it:               # o stream acaba sozinho ao ver que o cliente saiu
+                pass
+        else:
+            await it.aclose()                # o que o Starlette faz quando o cliente se desliga
+        return first
+
+    first = asyncio.run(consume())
+    assert json.loads(first[len("data: "):])["step"] == "answer"
+    assert wait_for(lambda: state["stopped"]), "o worker continuou depois de o cliente sair"
+    assert wait_for(lambda: fake_request_log and fake_request_log[-1]["kind"] == "cancelled")
+    stopped_at = state["tokens"]
+    time.sleep(0.1)
+    assert state["tokens"] == stopped_at                     # não pede mais texto ao LLM
+    assert conversation == []                                # nada gravado na conversa
+
+
+def test_a_finished_stream_does_not_cancel_anything(monkeypatch, conversation, fake_request_log):
+    patch_route(monkeypatch, "ask", streaming_ask)
+    r = client.post("/ask/stream", json={"question": "Marcas?", "lang": "pt"}, headers=bearer())
+    assert sse_events(r)[-1]["type"] == "done"
+    assert fake_request_log[-1]["kind"] == "sql" and len(conversation) == 2
+
+
+def test_disconnect_after_the_last_event_saves_nothing(monkeypatch, conversation, fake_request_log):
+    """Uma recusa não emite nada depois do "classify": se o cliente sair entretanto, o
+    on_event nunca levanta. O handle_ask vê o cancelamento antes de gravar."""
+    cancelled = threading.Event()
+    created = []
+    patch_route(monkeypatch, "create_conversation", lambda u, q: created.append(q) or 99)
+
+    def refusal(question, user, lang, history, on_event=None):
+        on_event({"type": "status", "step": "classify"})
+        cancelled.set()                                    # o cliente desligou-se aqui
+        return {"sql": None, "kind": "no_sql", "answer": "Só respondo sobre os dados."}
+    patch_route(monkeypatch, "ask", refusal)
+    with pytest.raises(ask_route.StreamCancelled):
+        ask_route.handle_ask(AskIn(question="Olá?", lang="pt"), dict(LOJA), lambda e: None, cancelled)
+    assert conversation == [] and created == []          # nem conversa nova, nem mensagens
+    assert fake_request_log[-1]["kind"] == "cancelled"
+
+
+# ---------- NaN / Infinity nas linhas e gravação numa só transação ----------
+
+NAN_ROWS = [["X", float("nan")], ["Y", float("inf")], ["Z", Decimal("NaN")], ["W", Decimal("12.50")]]
+
+
+def nan_ask(question, user, lang, history, on_event=None):
+    return {"sql": None, "kind": "orders", "columns": ["ingredient", "to_order"], "rows": NAN_ROWS,
+            "answer": "ok"}
+
+
+def test_ask_json_with_nan_rows_is_200_and_stores_null(monkeypatch, conversation):
+    """Antes: o JSONResponse (allow_nan=False) dava 500 e o jsonb recusava a mensagem."""
+    patch_route(monkeypatch, "ask", nan_ask)
+    r = client.post("/ask", json={"question": "encomendar", "lang": "pt"}, headers=bearer())
+    assert r.status_code == 200
+    assert r.json()["rows"] == [["X", None], ["Y", None], ["Z", None], ["W", 12.5]]
+    stored = json.loads(conversation[1][6])
+    assert stored["rows"] == [["X", None], ["Y", None], ["Z", None], ["W", 12.5]]
+
+
+def test_stored_payload_never_contains_nan():
+    from multistore_ai_assistant.api.conversations import result_payload
+    text = result_payload(["a", "b"], [(float("nan"), Decimal("-Infinity")), (np.float32("nan"), np.int64(3))])
+    assert "NaN" not in text and "Infinity" not in text
+    assert json.loads(text)["rows"] == [[None, None], [None, 3]]
+
+
+def test_a_nan_that_escapes_the_cleanup_fails_loudly(monkeypatch):
+    """allow_nan=False: se o jsonable deixar passar um NaN, falha aqui e não na BD (ou no browser)."""
+    from multistore_ai_assistant.api import conversations
+    monkeypatch.setattr(conversations, "jsonable", lambda v: v)
+    with pytest.raises(ValueError):
+        conversations.result_payload(["a"], [(float("nan"),)])
+    with pytest.raises(ValueError):
+        json.dumps({"x": float("nan")}, allow_nan=False)
+    monkeypatch.setattr(ask_route, "jsonable", lambda v: v)
+    with pytest.raises(ValueError):
+        ask_route._sse({"type": "data", "rows": [[float("nan")]]})
+
+
+def test_if_saving_fails_a_new_conversation_is_removed(monkeypatch, conversation, fake_request_log):
+    deleted = []
+    patch_route(monkeypatch, "ask", nan_ask)
+
+    def broken(*a, **k):
+        raise psycopg.errors.CheckViolation("messages_result_check")
+    patch_route(monkeypatch, "add_exchange", broken)
+    patch_route(monkeypatch, "delete_conversation", lambda u, c: deleted.append((u, c)) or True)
+    r = client.post("/ask", json={"question": "encomendar", "lang": "en"}, headers=bearer())
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "unavailable"
+    assert deleted == [("gerente.maia", 99)]               # a conversa criada para esta pergunta sai
+
+
+def test_if_saving_fails_an_existing_conversation_is_kept(monkeypatch, conversation):
+    deleted = []
+    patch_route(monkeypatch, "ask", nan_ask)
+    patch_route(monkeypatch, "add_exchange", lambda *a, **k: (_ for _ in ()).throw(psycopg.OperationalError("x")))
+    patch_route(monkeypatch, "delete_conversation", lambda u, c: deleted.append(c))
+    r = client.post("/ask", json={"question": "q", "conversation_id": 7}, headers=bearer())
+    assert r.status_code == 503 and deleted == []
 
 
 def test_ask_json_also_returns_suggestions(monkeypatch, conversation):

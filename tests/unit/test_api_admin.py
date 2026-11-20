@@ -26,7 +26,9 @@ def store(monkeypatch):
     patch_route(monkeypatch, "owns", lambda u, c: True)
     patch_route(monkeypatch, "create_conversation", lambda u, q: 1)
     patch_route(monkeypatch, "get_history", lambda c: [])
-    patch_route(monkeypatch, "add_message", lambda *a: msgs.append(a))
+    def exchange(c, question, answer, s=None, k=None, rid=None, res=None):
+        msgs.extend([(c, "user", question), (c, "assistant", answer, s, k, rid, res)])
+    patch_route(monkeypatch, "add_exchange", exchange)
     return msgs
 
 
@@ -54,7 +56,7 @@ def test_ask_saves_the_request_and_returns_its_id(monkeypatch, store, fake_reque
     assert r.json()["request_id"] == 1
     assert fake_request_log == [{"user": "gerente.maia", "question": "Lojas?", "lang": "en", "kind": "sql",
                                  "conversation_id": 1, "llm_calls": 0, "sql_attempts": 0, "error": None}]
-    assert store[-1][-1] == 1                                   # a resposta guarda o request_id
+    assert store[-1][5] == 1                                    # a resposta guarda o request_id
 
 
 def test_failed_requests_are_logged_as_exceptions(monkeypatch, store, fake_request_log):

@@ -78,7 +78,7 @@ const ADMIN_TEXTS = {
       intentNames: { data: "Dados (SQL)", forecast: "Previsão", orders: "Encomendas", chat: "Conversa",
                      personal_data: "Dados pessoais", write: "Pedido de escrita", off_topic: "Fora de âmbito", llm: "Decide o LLM" },
       kindNames: { sql: "SQL", forecast: "Previsão", orders: "Encomendas", no_sql: "Conversa", denied: "Sem módulo",
-                   error: "Erro", exception: "Falha técnica" },
+                   error: "Erro", exception: "Falha técnica", cancelled: "Cancelada" },
     },
   },
   en: {
@@ -146,7 +146,7 @@ const ADMIN_TEXTS = {
       intentNames: { data: "Data (SQL)", forecast: "Forecast", orders: "Orders", chat: "Chat",
                      personal_data: "Personal data", write: "Write request", off_topic: "Off-topic", llm: "LLM decides" },
       kindNames: { sql: "SQL", forecast: "Forecast", orders: "Orders", no_sql: "Chat", denied: "No module",
-                   error: "Error", exception: "Technical failure" },
+                   error: "Error", exception: "Technical failure", cancelled: "Cancelled" },
     },
   },
   es: {
@@ -214,7 +214,7 @@ const ADMIN_TEXTS = {
       intentNames: { data: "Datos (SQL)", forecast: "Previsión", orders: "Pedidos", chat: "Charla",
                      personal_data: "Datos personales", write: "Petición de escritura", off_topic: "Fuera de ámbito", llm: "Decide el LLM" },
       kindNames: { sql: "SQL", forecast: "Previsión", orders: "Pedidos", no_sql: "Charla", denied: "Sin módulo",
-                   error: "Error", exception: "Fallo técnico" },
+                   error: "Error", exception: "Fallo técnico", cancelled: "Cancelada" },
     },
   },
   fr: {
@@ -282,7 +282,7 @@ const ADMIN_TEXTS = {
       intentNames: { data: "Données (SQL)", forecast: "Prévision", orders: "Commandes", chat: "Discussion",
                      personal_data: "Données personnelles", write: "Demande d'écriture", off_topic: "Hors sujet", llm: "Le LLM décide" },
       kindNames: { sql: "SQL", forecast: "Prévision", orders: "Commandes", no_sql: "Discussion", denied: "Sans module",
-                   error: "Erreur", exception: "Panne technique" },
+                   error: "Erreur", exception: "Panne technique", cancelled: "Annulée" },
     },
   },
 };

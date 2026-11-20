@@ -32,6 +32,7 @@ from multistore_ai_assistant.api.routes import (  # noqa: E402
     auth,
     avatars,
     conversations,
+    dashboard,
     pages,
     profile,
     review,
@@ -41,7 +42,8 @@ from multistore_ai_assistant.api.routes import (  # noqa: E402
 
 LIMITERS = deps.LIMITERS
 # review_logic: o /feedback valida o SQL com api.review.teachable_sql (run_query, add_example)
-ROUTE_MODULES = (auth, profile, avatars, ask, conversations, users, admin, review, settings, pages, review_logic)
+ROUTE_MODULES = (auth, profile, avatars, ask, conversations, dashboard, users, admin,
+                 review, settings, pages, review_logic)
 
 
 def patch_route(mp, name: str, value) -> None:
@@ -60,6 +62,15 @@ def reset_rate_limits():
     yield
     for limiter in LIMITERS:
         limiter._calls.clear()
+
+
+@pytest.fixture(autouse=True)
+def fresh_forecast_cache():
+    """A previsão do dia fica em cache: cada teste começa sem ela (muitos simulam o modelo)."""
+    from multistore_ai_assistant.forecast.service import clear_forecast_cache
+    clear_forecast_cache()
+    yield
+    clear_forecast_cache()
 
 
 # Perfis como saem de auth.load_user (os módulos são os efetivos de cada perfil;

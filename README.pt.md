@@ -26,7 +26,7 @@ Os gestores de um grupo de restauração português (fictício) fazem perguntas 
 - **RAG com pgvector**, **cache de SQL** para perguntas repetidas em qualquer das quatro línguas, e um **ciclo de revisão dos 👎** em que quem revê corrige o SQL, testa-o e ensina o assistente.
 - **Previsão de vendas** com meteorologia real (Open-Meteo) e feriados portugueses, e sugestões de encomenda de ingredientes.
 - **Aplicação web pronta a usar** (Vue, sem passo de build): respostas em streaming, gráficos, sugestões de seguimento, conversas guardadas, contas e módulos, painel de observabilidade, recuperação de password por email, modo escuro, quatro línguas, acessível e adaptada ao telemóvel.
-- **Testado e reproduzível:** 886 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
+- **Testado e reproduzível:** 941 testes (incluindo ataques à base de dados e desempenho sob RLS), instalação Docker num só comando, migrações versionadas e CI.
 
 | Resposta com gráfico e tabela | Gerente de loja: RLS + o SQL usado |
 |---|---|
@@ -179,7 +179,7 @@ uv run pytest tests/unit       # sem base de dados, sem LLM, sem modelos (~6 s)
 uv run pytest --cov            # com cobertura
 ```
 
-**886 testes** (unitários + integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM, o fluxo de recuperação de password e o envio de fotos de perfil (imagens falsas, tamanho, tipo).
+**941 testes** (unitários + integração), **96 % de cobertura** do código que corre na app. Cobrem o validador de SQL contra padrões de ataque, JWT forjados, todos os endpoints da API, o RLS de cada perfil na base de dados real (ataques com `set_config` e assinaturas forjadas devolvem zero linhas), tempos de consulta sob RLS, migrações, a cache de SQL, a chave de reserva do LLM, o fluxo de recuperação de password e o envio de fotos de perfil (imagens falsas, tamanho, tipo).
 
 <details>
 <summary>API</summary>
@@ -193,15 +193,16 @@ uv run pytest --cov            # com cobertura
 | `POST` / `PUT` | `/profile/password`, `/profile/email` | Bearer | Mudar a própria password / email de recuperação (não nas contas de demo) |
 | `POST` / `DELETE` | `/me/avatar` | Bearer | Foto da própria conta: PNG/JPEG/WebP em bruto até 2 MB, verificada com o Pillow e guardada como WebP 256×256 sem EXIF; `DELETE` volta às iniciais (não nas contas de demo) |
 | `GET` | `/avatars/{uuid}.webp` | Bearer | Uma foto de perfil (as URLs vêm do `/me` e do `/users`, com `?v=` para o browser não mostrar a antiga) |
-| `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → resposta, SQL, linhas, sugestões (stream: Server-Sent Events) |
+| `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → resposta, SQL, linhas, sugestões (stream: Server-Sent Events; para o LLM se o cliente se desligar) |
 | `POST` | `/explain` | Bearer (*sql*) | Explicação em linguagem simples do SQL de uma das tuas respostas |
 | `GET` | `/alerts` | Bearer | Quedas/subidas de vendas e stock baixo no teu âmbito |
+| `GET` | `/dashboard` | Bearer (*sql* e/ou *forecast*) | KPIs de vendas no teu âmbito RLS: faturação do mês até hoje vs. os mesmos dias do mês passado, top lojas, margem por marca (produtos sem custo conhecido ficam de fora e são contados), previsão a 7 dias (em cache por dia). Só as secções que os teus módulos permitem |
 | `POST` | `/ratings` | Bearer | 👍 / 👎 nas tuas respostas |
 | `GET` / `POST` / `PUT` / `DELETE` | `/examples…`, `/review…`, `/feedback` | Bearer (*teach*) | Exemplos RAG e ciclo de revisão dos 👎 (validador + `EXPLAIN` antes de guardar) |
 | `GET` / `POST` / `PATCH` / `DELETE` | `/users…` | Bearer (*users*) | Contas do teu nível ou abaixo, no teu âmbito |
 | `GET` / `PUT` | `/config`, `/settings/me`, `/settings/app` | –, Bearer, admin | Predefinições públicas, definições pessoais e da aplicação |
 | `GET` | `/admin/metrics` | Bearer (admin) | Dados do painel de observabilidade |
-| `GET` / `PATCH` / `DELETE` | `/conversations…` | Bearer | Conversas guardadas (só o dono) |
+| `GET` / `PATCH` / `DELETE` | `/conversations…` | Bearer | Conversas guardadas (só o dono); `GET /conversations/{id}/pdf` exporta PDF com as linhas guardadas em cada resposta (até 200; nada é reexecutado; 5/min) |
 
 Os erros têm sempre a forma `{"detail": {"code", "message"}}`: o código é estável e a mensagem segue o `Accept-Language` (PT/EN/ES/FR).
 </details>

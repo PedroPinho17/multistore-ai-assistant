@@ -26,7 +26,7 @@ Managers of a (fictional) Portuguese restaurant group ask questions in **Portugu
 - **RAG with pgvector**, a **SQL cache** for repeated questions in any of the four languages, and a **👎 review loop** where a reviewer fixes the SQL, tests it and teaches the assistant.
 - **Sales forecasting** with real weather (Open-Meteo) and Portuguese holidays, plus ingredient order suggestions.
 - **Product-ready web app** (Vue, no build step): streaming answers, charts, follow-up suggestions, saved conversations, accounts and modules, observability dashboard, password reset by email, dark mode, four languages, accessible, mobile.
-- **Tested and reproducible:** 886 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
+- **Tested and reproducible:** 941 tests (including attacks on the database and RLS performance), one-command Docker setup, versioned migrations, CI.
 
 | Answer with chart and table | Store manager: RLS + the SQL used |
 |---|---|
@@ -179,7 +179,7 @@ uv run pytest tests/unit       # no database, no LLM, no models (~6 s)
 uv run pytest --cov            # with coverage
 ```
 
-**886 tests** (unit + integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback, the password reset flow and profile photo uploads (fake images, size, type).
+**941 tests** (unit + integration), **96 % coverage** of the code that runs in the app. They cover the SQL validator against attack patterns, JWT forging, every API endpoint, RLS per role on the real database (`set_config` attacks and forged signatures return zero rows), query timings under RLS, migrations, the SQL cache, the LLM key fallback, the password reset flow and profile photo uploads (fake images, size, type).
 
 <details>
 <summary>API</summary>
@@ -193,15 +193,16 @@ uv run pytest --cov            # with coverage
 | `POST` / `PUT` | `/profile/password`, `/profile/email` | Bearer | Change own password / recovery email (not for demo accounts) |
 | `POST` / `DELETE` | `/me/avatar` | Bearer | Own profile photo: raw PNG/JPEG/WebP body up to 2 MB, checked with Pillow and stored as a 256×256 WebP without EXIF; `DELETE` goes back to initials (not for demo accounts) |
 | `GET` | `/avatars/{uuid}.webp` | Bearer | A profile photo (URLs come from `/me` and `/users`, with `?v=` for cache-busting) |
-| `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → answer, SQL, rows, suggestions (stream: Server-Sent Events) |
+| `POST` | `/ask`, `/ask/stream` | Bearer | `{question, lang, conversation_id?}` → answer, SQL, rows, suggestions (stream: Server-Sent Events; stops the LLM if the client disconnects) |
 | `POST` | `/explain` | Bearer (*sql*) | Plain-language explanation of the SQL of one of your answers |
 | `GET` | `/alerts` | Bearer | Sales drops/rises and low stock in your scope |
+| `GET` | `/dashboard` | Bearer (*sql* and/or *forecast*) | Sales KPIs in your RLS scope: month-to-date revenue vs the same days last month, top stores, margin by brand (products without a known cost are left out and counted), 7-day forecast (cached per day). Only the sections your modules allow |
 | `POST` | `/ratings` | Bearer | 👍 / 👎 on your own answers |
 | `GET` / `POST` / `PUT` / `DELETE` | `/examples…`, `/review…`, `/feedback` | Bearer (*teach*) | RAG examples and the 👎 review loop (validator + `EXPLAIN` before saving) |
 | `GET` / `POST` / `PATCH` / `DELETE` | `/users…` | Bearer (*users*) | Accounts at your level or below, in your scope |
 | `GET` / `PUT` | `/config`, `/settings/me`, `/settings/app` | –, Bearer, admin | Public defaults, personal settings, app settings |
 | `GET` | `/admin/metrics` | Bearer (admin) | Observability dashboard data |
-| `GET` / `PATCH` / `DELETE` | `/conversations…` | Bearer | Saved conversations (owner only) |
+| `GET` / `PATCH` / `DELETE` | `/conversations…` | Bearer | Saved conversations (owner only); `GET /conversations/{id}/pdf` exports a PDF with the rows stored with each answer (up to 200; nothing is re-run; 5/min) |
 
 Errors always have the shape `{"detail": {"code", "message"}}`: the code is stable and the message follows `Accept-Language` (PT/EN/ES/FR).
 </details>

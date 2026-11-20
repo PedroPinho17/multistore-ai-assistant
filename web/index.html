@@ -127,7 +127,7 @@
   <!-- Notificações (substituem os alertas do browser) -->
   <div class="toasts" aria-live="polite">
     <transition-group name="toast">
-      <div v-for="x in toasts" :key="x.id" class="toast" :class="x.type" :role="x.type === 'error' ? 'alert' : 'status'">
+      <div v-for="x in toasts" :key="x.id" class="toast" :class="x.type || 'ok'" :role="x.type === 'error' ? 'alert' : 'status'">
         <span class="toast-dot" aria-hidden="true">{{ x.type === "error" ? "!" : "✓" }}</span>
         <span class="toast-text">{{ x.text }}</span>
         <button type="button" class="toast-x" :aria-label="t.dlg.close" @click="dismissToast(x.id)">×</button>
@@ -137,7 +137,9 @@
 </div>
 
 <script src="/static/js/ui.js"></script>
+<script src="/static/js/sse.js"></script>
 <script src="/static/js/admin.js"></script>
+<script src="/static/js/dashboard.js"></script>
 <script src="/static/js/settings.js"></script>
 <script src="/static/js/review.js"></script>
 <script src="/static/js/texts.js"></script>
@@ -146,6 +148,7 @@
 <script src="/static/js/pages/reset.js"></script>
 <script src="/static/js/pages/shell.js"></script>
 <script src="/static/js/pages/chat.js"></script>
+<script src="/static/js/pages/dashboard.js"></script>
 <script src="/static/js/pages/profile.js"></script>
 <script src="/static/js/pages/settings.js"></script>
 <script src="/static/js/pages/users.js"></script>

@@ -127,3 +127,31 @@ def test_chat_reply_is_told_it_has_no_data(llm):
     client = llm(" Olá! ", module=answer_mod)
     assert answer_mod.chat_reply("Olá", "pt") == "Olá!"
     assert "NO access to any data" in client.sent[0]["messages"][0]["content"]
+
+
+# ---------- streaming interrompido (o cliente do /ask/stream desligou-se) ----------
+
+class FakeStream:
+    """Como o ``openai.Stream``: itera pedaços e tem ``close()`` (fecha o pedido HTTP)."""
+
+    def __init__(self, pieces):
+        self.pieces, self.closed, self.read = pieces, False, 0
+
+    def __iter__(self):
+        for text in self.pieces:
+            self.read += 1
+            yield SimpleNamespace(usage=None, choices=[SimpleNamespace(delta=SimpleNamespace(content=text))])
+
+
+def test_aborting_the_token_callback_closes_the_llm_stream(monkeypatch):
+    stream = FakeStream(["um ", "dois ", "três"])
+    monkeypatch.setattr(answer_mod, "client", SimpleNamespace(chat=SimpleNamespace(
+        completions=SimpleNamespace(create=lambda **k: stream))))
+    stream.close = lambda: setattr(stream, "closed", True)
+
+    def on_token(piece):
+        raise RuntimeError("cliente desligou-se")
+
+    with pytest.raises(RuntimeError):
+        answer_mod.complete([{"role": "user", "content": "q"}], 0, on_token)
+    assert stream.closed and stream.read == 1                  # parou no 1.º pedaço e fechou o pedido

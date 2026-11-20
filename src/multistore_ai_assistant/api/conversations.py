@@ -3,6 +3,11 @@
 Todas as queries filtram por ``user_id`` do username autenticado, para um
 utilizador não aceder às conversas de outro.
 """
+import json
+from datetime import date, datetime
+from decimal import Decimal
+
+from multistore_ai_assistant.api.json_safe import jsonable
 from multistore_ai_assistant.db.pool import connection
 
 # Subquery reutilizada: resolve o id do utilizador a partir do username
@@ -24,8 +29,40 @@ def list_conversations(username: str) -> list[dict]:
     return [{"id": r[0], "title": r[1], "updated_at": r[2].isoformat()} for r in rows]
 
 
-def get_messages(username: str, conv_id: int) -> list[dict] | None:
-    """Mensagens de uma conversa, ou ``None`` se não pertencer ao utilizador."""
+MAX_STORED_ROWS = 200      # linhas de dados guardadas por resposta (para o PDF); também na CHECK da V014
+
+
+def _json_value(value):
+    """Valores das linhas em JSON: Decimal (já finito) → número, datas → ISO, resto → texto."""
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    return str(value)
+
+
+def result_payload(columns: list | None, rows: list | None) -> str | None:
+    """Os dados de uma resposta, prontos para ``messages.result`` (JSON), ou ``None`` se não há tabela.
+
+    Guarda no máximo ``MAX_STORED_ROWS`` linhas, com ``truncated`` a dizer se havia mais.
+    NaN/Infinity (o ``jsonb`` recusa-os) passam a ``null``; ``allow_nan=False`` faz falhar
+    aqui, antes de gravar, se algum escapar.
+    """
+    if not columns:
+        return None
+    rows = list(rows or [])
+    payload = {"columns": [str(c) for c in columns],
+               "rows": jsonable([list(r) for r in rows[:MAX_STORED_ROWS]]),
+               "truncated": len(rows) > MAX_STORED_ROWS}
+    return json.dumps(payload, ensure_ascii=False, allow_nan=False, default=_json_value)
+
+
+def get_messages(username: str, conv_id: int, with_results: bool = False) -> list[dict] | None:
+    """Mensagens de uma conversa, ou ``None`` se não pertencer ao utilizador.
+
+    ``with_results``: inclui ``result`` (as linhas guardadas de cada resposta, para o PDF).
+    A UI não as pede: são até 200 linhas por mensagem.
+    """
     with _conn() as conn:
         owner = conn.execute(
             f"SELECT 1 FROM conversations WHERE id = %s AND user_id = {USER_ID}",
@@ -34,15 +71,19 @@ def get_messages(username: str, conv_id: int) -> list[dict] | None:
         if not owner:
             return None
         rows = conn.execute(
-            "SELECT m.role, m.content, m.sql, m.kind, m.created_at, m.request_id, l.rating "
-            "FROM messages m LEFT JOIN request_log l ON l.id = m.request_id "
-            "WHERE m.conversation_id = %s ORDER BY m.id", (conv_id,),
+            "SELECT m.role, m.content, m.sql, m.kind, m.created_at, m.request_id, l.rating"
+            + (", m.result" if with_results else "") +
+            " FROM messages m LEFT JOIN request_log l ON l.id = m.request_id"
+            " WHERE m.conversation_id = %s ORDER BY m.id", (conv_id,),
         ).fetchall()
-    return [
-        {"role": r[0], "content": r[1], "sql": r[2], "kind": r[3],
-         "created_at": r[4].isoformat(), "request_id": r[5], "rating": r[6]}
-        for r in rows
-    ]
+    out = []
+    for r in rows:
+        msg = {"role": r[0], "content": r[1], "sql": r[2], "kind": r[3],
+               "created_at": r[4].isoformat(), "request_id": r[5], "rating": r[6]}
+        if with_results:
+            msg["result"] = r[7]                 # o psycopg já devolve o jsonb descodificado
+        out.append(msg)
+    return out
 
 
 def create_conversation(username: str, first_question: str) -> int:
@@ -65,9 +106,20 @@ def owns(username: str, conv_id: int) -> bool:
         ).fetchone() is not None
 
 
+def conversation_title(username: str, conv_id: int) -> str | None:
+    """Título da conversa própria, ou ``None`` se não existir / não for dono."""
+    with _conn() as conn:
+        row = conn.execute(
+            f"SELECT title FROM conversations WHERE id = %s AND user_id = {USER_ID}",
+            (conv_id, username),
+        ).fetchone()
+    return row[0] if row else None
+
+
 def add_message(
     conv_id: int, role: str, content: str,
     sql: str | None = None, kind: str | None = None, request_id: int | None = None,
+    result: str | None = None,
 ) -> None:
     """Grava uma mensagem e atualiza ``updated_at`` da conversa.
 
@@ -78,15 +130,40 @@ def add_message(
         sql: SQL usado (só respostas com query), opcional.
         kind: ``sql``, ``forecast``, ``orders``, ``no_sql``, ``denied`` ou ``error``, opcional.
         request_id: Registo do pedido em ``request_log`` (para o 👍/👎), opcional.
+        result: Dados mostrados na resposta (``result_payload``), opcional.
     """
     with _conn() as conn:
         conn.execute(
-            "INSERT INTO messages (conversation_id, role, content, sql, kind, request_id) "
-            "VALUES (%s, %s, %s, %s, %s, %s)", (conv_id, role, content, sql, kind, request_id),
+            "INSERT INTO messages (conversation_id, role, content, sql, kind, request_id, result) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
+            (conv_id, role, content, sql, kind, request_id, result),
         )
         conn.execute(
             "UPDATE conversations SET updated_at = now() WHERE id = %s", (conv_id,),
         )
+
+
+def add_exchange(
+    conv_id: int, question: str, answer: str,
+    sql: str | None = None, kind: str | None = None, request_id: int | None = None,
+    result: str | None = None,
+) -> None:
+    """Grava a pergunta e a resposta numa só transação: ficam as duas ou nenhuma.
+
+    Antes, eram dois ``add_message`` (duas transações): se a 2.ª falhasse (p.ex. um NaN
+    nas linhas, que o ``jsonb`` recusa), a pergunta ficava na conversa sem resposta.
+    """
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO messages (conversation_id, role, content) VALUES (%s, 'user', %s)",
+            (conv_id, question),
+        )
+        conn.execute(
+            "INSERT INTO messages (conversation_id, role, content, sql, kind, request_id, result) "
+            "VALUES (%s, 'assistant', %s, %s, %s, %s, %s::jsonb)",
+            (conv_id, answer, sql, kind, request_id, result),
+        )
+        conn.execute("UPDATE conversations SET updated_at = now() WHERE id = %s", (conv_id,))
 
 
 def get_history(conv_id: int, turns: int = 3) -> list[tuple[str, str]]:

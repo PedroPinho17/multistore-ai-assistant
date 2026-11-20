@@ -12,13 +12,14 @@ const TEXTS = {
     showSql: "ver SQL", hideSql: "esconder SQL", showTable: n => `ver tabela (${n})`, hideTable: "esconder tabela",
     source: "Fonte", rows: n => `${n} linha${n === 1 ? "" : "s"}`, mlSource: "Modelo de previsão (ML), sem consulta SQL",
     newChat: "Nova conversa", recents: "Recentes", noChats: "Ainda sem conversas", delete: "Apagar",
+    exportPdf: "Exportar PDF", exportingPdf: "A gerar PDF…", pdfDone: "PDF descarregado.",
     rename: "Mudar nome", language: "Idioma", menu: "Conversas", questionLabel: "Pergunta", chart: "Gráfico",
     dlg: { cancel: "Cancelar", del: "Apagar", close: "Fechar", delTitle: "Apagar conversa?",
            delText: "A conversa e todas as mensagens vão ser apagadas. Não dá para desfazer.",
            clearTitle: "Apagar todo o histórico?", deleted: "Conversa apagada.", cleared: "Histórico apagado." },
     explain: "Explicar", explaining: "A explicar…", cached: "da cache", followUp: "Perguntas de seguimento", alertsTitle: "Alertas",
     demoReadOnly: "Conta de demonstração (a password é pública): podes ver, mas não criar nem alterar contas, a password ou a foto.",
-    copy: "copiar", copied: "copiado", correct: "resposta certa", learned: "guardado como exemplo",
+    copy: "copiar", copied: "copiado", copyFailed: "Não foi possível copiar. Seleciona o texto e copia à mão.", correct: "resposta certa", learned: "guardado como exemplo",
     roles: { imperador: "Imperador", marca: "Marca", loja: "Loja" },
     loginError: "Utilizador ou palavra-passe errados.", tooMany: "Demasiadas tentativas. Espera um pouco.",
     network: "Não consegui falar com o servidor. Está a correr?",
@@ -48,13 +49,14 @@ const TEXTS = {
     showSql: "show SQL", hideSql: "hide SQL", showTable: n => `show table (${n})`, hideTable: "hide table",
     source: "Source", rows: n => `${n} row${n === 1 ? "" : "s"}`, mlSource: "Forecast model (ML), no SQL query",
     newChat: "New chat", recents: "Recents", noChats: "No chats yet", delete: "Delete",
+    exportPdf: "Export PDF", exportingPdf: "Generating PDF…", pdfDone: "PDF downloaded.",
     rename: "Rename", language: "Language", menu: "Chats", questionLabel: "Question", chart: "Chart",
     dlg: { cancel: "Cancel", del: "Delete", close: "Close", delTitle: "Delete chat?",
            delText: "The chat and all its messages will be deleted. This can't be undone.",
            clearTitle: "Delete all history?", deleted: "Chat deleted.", cleared: "History deleted." },
     explain: "Explain", explaining: "Explaining…", cached: "cached", followUp: "Follow-up questions", alertsTitle: "Alerts",
     demoReadOnly: "Demo account (its password is public): you can look, but not create or change accounts, the password or the photo.",
-    copy: "copy", copied: "copied", correct: "correct answer", learned: "saved as example",
+    copy: "copy", copied: "copied", copyFailed: "Couldn't copy. Select the text and copy it manually.", correct: "correct answer", learned: "saved as example",
     roles: { imperador: "Emperor", marca: "Brand", loja: "Store" },
     loginError: "Wrong username or password.", tooMany: "Too many attempts. Please wait a bit.",
     network: "Couldn't reach the server. Is it running?",
@@ -83,13 +85,14 @@ const TEXTS = {
     showSql: "ver SQL", hideSql: "ocultar SQL", showTable: n => `ver tabla (${n})`, hideTable: "ocultar tabla",
     source: "Fuente", rows: n => `${n} fila${n === 1 ? "" : "s"}`, mlSource: "Modelo de previsión (ML), sin consulta SQL",
     newChat: "Nueva conversación", recents: "Recientes", noChats: "Aún no hay conversaciones", delete: "Borrar",
+    exportPdf: "Exportar PDF", exportingPdf: "Generando PDF…", pdfDone: "PDF descargado.",
     rename: "Cambiar nombre", language: "Idioma", menu: "Conversaciones", questionLabel: "Pregunta", chart: "Gráfico",
     dlg: { cancel: "Cancelar", del: "Borrar", close: "Cerrar", delTitle: "¿Borrar la conversación?",
            delText: "Se borrarán la conversación y todos sus mensajes. No se puede deshacer.",
            clearTitle: "¿Borrar todo el historial?", deleted: "Conversación borrada.", cleared: "Historial borrado." },
     explain: "Explicar", explaining: "Explicando…", cached: "de la caché", followUp: "Preguntas de seguimiento", alertsTitle: "Alertas",
     demoReadOnly: "Cuenta de demostración (la contraseña es pública): puedes ver, pero no crear ni modificar cuentas, la contraseña o la foto.",
-    copy: "copiar", copied: "copiado", correct: "respuesta correcta", learned: "guardado como ejemplo",
+    copy: "copiar", copied: "copiado", copyFailed: "No se pudo copiar. Selecciona el texto y cópialo a mano.", correct: "respuesta correcta", learned: "guardado como ejemplo",
     roles: { imperador: "Emperador", marca: "Marca", loja: "Tienda" },
     loginError: "Usuario o contraseña incorrectos.", tooMany: "Demasiados intentos. Espera un poco.",
     network: "No he podido contactar con el servidor. ¿Está en marcha?",
@@ -118,13 +121,14 @@ const TEXTS = {
     showSql: "voir SQL", hideSql: "masquer SQL", showTable: n => `voir le tableau (${n})`, hideTable: "masquer le tableau",
     source: "Source", rows: n => `${n} ligne${n === 1 ? "" : "s"}`, mlSource: "Modèle de prévision (ML), sans requête SQL",
     newChat: "Nouvelle conversation", recents: "Récentes", noChats: "Pas encore de conversations", delete: "Supprimer",
+    exportPdf: "Exporter PDF", exportingPdf: "Génération du PDF…", pdfDone: "PDF téléchargé.",
     rename: "Renommer", language: "Langue", menu: "Conversations", questionLabel: "Question", chart: "Graphique",
     dlg: { cancel: "Annuler", del: "Supprimer", close: "Fermer", delTitle: "Supprimer la conversation ?",
            delText: "La conversation et tous ses messages seront supprimés. C'est irréversible.",
            clearTitle: "Supprimer tout l'historique ?", deleted: "Conversation supprimée.", cleared: "Historique supprimé." },
     explain: "Expliquer", explaining: "Explication…", cached: "du cache", followUp: "Questions de suivi", alertsTitle: "Alertes",
     demoReadOnly: "Compte de démonstration (le mot de passe est public) : tu peux consulter, mais pas créer ni modifier des comptes, le mot de passe ou la photo.",
-    copy: "copier", copied: "copié", correct: "bonne réponse", learned: "enregistré comme exemple",
+    copy: "copier", copied: "copié", copyFailed: "Impossible de copier. Sélectionne le texte et copie-le à la main.", correct: "bonne réponse", learned: "enregistré comme exemple",
     roles: { imperador: "Empereur", marca: "Marque", loja: "Magasin" },
     loginError: "Utilisateur ou mot de passe incorrect.", tooMany: "Trop de tentatives. Attends un peu.",
     network: "Impossible de joindre le serveur. Est-il lancé ?",
@@ -499,7 +503,8 @@ const PAGE_TEXTS = {
   },
 };
 for (const code of Object.keys(PAGE_TEXTS)) Object.assign(TEXTS[code], PAGE_TEXTS[code]);
-installAdminTexts(TEXTS);
-installUiTexts(TEXTS);
-installReviewTexts(TEXTS);         // rever 👎 (web/static/js/review.js)
-installSettingsTexts(TEXTS);       // página de Definições (web/static/settings.js)             // página inicial, login e foto de perfil (web/static/ui.js)          // contas, observabilidade e 👍/👎 (web/static/admin.js)
+installAdminTexts(TEXTS);          // contas, observabilidade e 👍/👎
+installDashboardTexts(TEXTS);      // painel de KPIs de vendas
+installUiTexts(TEXTS);             // página inicial, login e foto de perfil
+installReviewTexts(TEXTS);         // rever 👎
+installSettingsTexts(TEXTS);       // definições
