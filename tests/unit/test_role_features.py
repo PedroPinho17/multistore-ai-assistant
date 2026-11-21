@@ -25,9 +25,17 @@ def allow(username: str, *features: str, fake_users) -> None:
 
 @pytest.fixture
 def quiet_ask(monkeypatch):
+    """/ask sem BD: o ``ask`` e as escritas da conversa ficam em memória (o request_log já é falso)."""
     def _ask(question, user, lang, history, on_event=None):
         return {"sql": "SELECT 1", "kind": "sql", "answer": "ok", "columns": ["x"], "rows": [[1]]}
+    saved = []
     patch_route(monkeypatch, "ask", _ask)
+    patch_route(monkeypatch, "owns", lambda u, c: c == 7)
+    patch_route(monkeypatch, "get_history", lambda c: [])
+    patch_route(monkeypatch, "create_conversation", lambda u, q: 99)
+    patch_route(monkeypatch, "add_exchange", lambda *a, **k: saved.append(a))
+    patch_route(monkeypatch, "delete_conversation", lambda u, c: True)
+    return saved
 
 
 @pytest.fixture
@@ -86,7 +94,8 @@ def test_ask_without_chat_forecast_or_orders_is_403(quiet_ask, fake_users):
 def test_ask_is_allowed_with_only_forecast(quiet_ask, fake_users):
     allow("gerente.maia", "forecast", fake_users=fake_users)
     r = client.post("/ask", json={"question": "Quanto vou vender?"}, headers=bearer(LOJA))
-    assert r.status_code == 200
+    assert r.status_code == 200, r.text
+    assert r.json()["conversation_id"] == 99 and len(quiet_ask) == 1
 
 
 def test_explain_needs_the_chat_feature(monkeypatch, fake_users):
