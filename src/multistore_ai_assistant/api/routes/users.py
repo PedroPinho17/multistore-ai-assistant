@@ -4,12 +4,18 @@ import logging
 from fastapi import APIRouter, Depends
 
 from multistore_ai_assistant.api import users as users_db
-from multistore_ai_assistant.api.deps import require_module, users_limiter
+from multistore_ai_assistant.api.deps import require_feature, require_module, users_limiter
 from multistore_ai_assistant.api.schemas import NewUserIn, UserPatchIn
 
 router = APIRouter(prefix="/users", tags=["users"])
 log = logging.getLogger("multistore")
-users_user = require_module("users", users_limiter)
+_users_module = require_module("users", users_limiter)
+_users_feature = require_feature("users")
+
+
+def users_user(user: dict = Depends(_users_module), _feature: dict = Depends(_users_feature)) -> dict:
+    """A conta tem o módulo ``users`` e o perfil tem a funcionalidade ``users``."""
+    return user
 
 
 @router.get("")

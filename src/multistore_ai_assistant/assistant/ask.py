@@ -27,6 +27,7 @@ import unicodedata
 
 import psycopg
 
+from multistore_ai_assistant.api.features import has_feature
 from multistore_ai_assistant.api.permissions import has_module
 from multistore_ai_assistant.assistant.answer import answer, chat_reply
 from multistore_ai_assistant.assistant.cache import lookup as cache_lookup
@@ -83,6 +84,35 @@ DENIED = {
     "es": "Tu cuenta no tiene acceso al módulo «{}». Pide acceso a quien gestiona tu cuenta.",
     "fr": "Ton compte n'a pas accès au module « {} ». Demande l'accès à la personne qui gère ton compte.",
 }
+
+
+FEATURE_DENIED = {
+    "forecast": {
+        "pt": "O teu perfil não tem acesso à previsão de vendas.",
+        "en": "Your role doesn't have access to the sales forecast.",
+        "es": "Tu perfil no tiene acceso a la previsión de ventas.",
+        "fr": "Ton profil n'a pas accès à la prévision des ventes.",
+    },
+    "orders": {
+        "pt": "O teu perfil não tem acesso às sugestões de encomendas.",
+        "en": "Your role doesn't have access to order suggestions.",
+        "es": "Tu perfil no tiene acceso a las sugerencias de pedidos.",
+        "fr": "Ton profil n'a pas accès aux suggestions de commandes.",
+    },
+    "chat": {
+        "pt": "O teu perfil não tem acesso às perguntas sobre os dados.",
+        "en": "Your role doesn't have access to data questions.",
+        "es": "Tu perfil no tiene acceso a las preguntas sobre los datos.",
+        "fr": "Ton profil n'a pas accès aux questions sur les données.",
+    },
+}
+
+
+def feature_denied(feature: str, lang: str) -> dict:
+    """Recusa traduzida: o perfil não tem a funcionalidade (não devolve dados)."""
+    texts = FEATURE_DENIED[feature]
+    return {"sql": None, "kind": "denied", "feature": feature,
+            "answer": texts.get(lang) or texts["pt"]}
 
 
 def denied(module: str, lang: str) -> dict:
@@ -153,6 +183,8 @@ def _tokens(on_event):
 
 def _ml_answer(kind: str, question: str, user: dict, lang: str, on_event=None) -> dict:
     """Resposta do modelo de previsão: ``kind`` é ``forecast`` ou ``orders``."""
+    if not has_feature(user, kind):
+        return feature_denied(kind, lang)
     if not has_module(user, kind):
         return denied(kind, lang)
     _emit(on_event, "status", step="forecast")
@@ -245,8 +277,17 @@ def ask(
     if intent in ("forecast", "orders"):
         return {**_ml_answer(intent, question, user, lang, on_event), "intent": intent}
 
-    # Cache de SQL: só sem histórico (um seguimento depende do contexto) e com o módulo de dados
-    if not history and has_module(user, "sql"):
+    # Daqui para baixo são perguntas aos dados, que precisam da funcionalidade chat.
+    # Sem ela, recusa antes do LLM (não gasta tokens) quando o classificador tem a certeza
+    # de que é uma pergunta aos dados, ou quando o perfil nem tem previsão/encomendas.
+    # Se o classificador não tiver a certeza, o LLM ainda pode etiquetar FORECAST/ORDERS/NO_SQL
+    # (um perfil só com previsão continua a funcionar); SQL gerado é recusado sem correr.
+    can_query = has_feature(user, "chat")
+    if not can_query and (intent is not None or not any(has_feature(user, f) for f in ("forecast", "orders"))):
+        return {**feature_denied("chat", lang), "intent": intent}
+
+    # Cache de SQL: só sem histórico (um seguimento depende do contexto), com chat e o módulo de dados
+    if can_query and not history and has_module(user, "sql"):
         hit = cache_lookup(question, user)
         if hit:
             try:
@@ -268,6 +309,8 @@ def ask(
         if sql.strip() == "NO_SQL":
             _emit(on_event, "status", step="answer")
             return {"sql": None, "kind": "no_sql", "answer": chat_reply(question, lang, on_token=_tokens(on_event))}
+        if not can_query:
+            return feature_denied("chat", lang)
         if not has_module(user, "sql"):
             return denied("sql", lang)
         try:

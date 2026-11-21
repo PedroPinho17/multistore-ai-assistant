@@ -75,6 +75,7 @@ Design decisions (why Groq and not a local model, why XLM-R, why RLS with a sign
 | **Read-only role** | `SELECT` only, read-only transactions, 10 s timeout, no access to private tables, column-level `REVOKE` on personal data. |
 | **SQL validator** | One query only; no DML/DDL, system catalogs or functions that change the session, read files or open connections. Timestamp comparisons are rewritten so plans stay fast under RLS. |
 | **API** | Rate limits, ownership checks, constant-time login, JWT with required claims, generic errors, `/docs` off by default. Password reset uses single-use, 30-minute tokens stored as SHA-256 and never reveals which emails exist. |
+| **Features by role** | Chat, forecast, orders, dashboard, profitability/review, accounts and admin are granted per role (`role_features`). Only the admin role edits them, on the admin page, and only it can hold the admin feature. A missing feature hides the page and returns 403. The chat opens with chat, forecast or orders, and each question is checked again: a data, forecast or orders question the role can't ask is refused in PT/EN/ES/FR and returns no rows. |
 | **Browser** | Strict CSP (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, no referrer, session token in `sessionStorage`, CSV formula-injection guard. |
 | **Infra** | No secrets in code; the database port is bound to `127.0.0.1`. |
 

@@ -4,12 +4,25 @@
 dicionário em memória; o registo de pedidos e as avaliações também.
 Um teste pode mudar ``fake_users`` para simular contas desativadas, etc.
 """
+import os
+
 import pytest
 
+os.environ["ROLE_FEATURES_FROM_DB"] = "0"
+
 from multistore_ai_assistant.api import auth
+from multistore_ai_assistant.api import features as role_features
 from tests.conftest import ADMIN, IMPERADOR, LOJA, MARCA, patch_route
 
 REAL_LOAD_USER = auth.load_user
+
+
+@pytest.fixture(autouse=True)
+def reset_role_features():
+    """Cada teste parte das funcionalidades por defeito de cada perfil."""
+    role_features.reset_defaults()
+    yield
+    role_features.reset_defaults()
 
 
 @pytest.fixture(autouse=True)

@@ -7,6 +7,7 @@ import { sessionStore } from '@/lib/storage'
 import { clearAvatarCache } from '@/lib/avatar'
 import { useUiStore } from '@/stores/ui'
 import type { Lang, Scope } from '@/i18n/types'
+import { CHAT_FEATURES, hasAnyFeature as anyOf, hasFeature as listHas } from '@/lib/features'
 import type { Router } from 'vue-router'
 
 function parseUser(raw: string | null): User | null {
@@ -65,6 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
     return (user.value?.modules || []).includes(m)
   }
 
+  function hasFeature(feature: string): boolean {
+    return listHas(user.value?.features, feature)
+  }
+
+  function hasAnyFeature(features: readonly string[]): boolean {
+    return anyOf(user.value?.features, features)
+  }
+
+  const canChat = computed(() => hasAnyFeature(CHAT_FEATURES))
+
   function wireApi(router?: Router) {
     const ui = useUiStore()
     configureApi({
@@ -88,7 +99,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (st.accent) ui.setAccent(st.accent, false)
   }
 
+  let lastRefresh = 0
+
   async function refreshMe() {
+    lastRefresh = Date.now()
     try {
       const me = await api<User>('/me')
       user.value = me
@@ -97,6 +111,12 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       /* keep cached user */
     }
+  }
+
+  /** Window focus: pick up permission changes (at most once per `minMs`). */
+  function refreshMeThrottled(minMs = 60_000): Promise<void> {
+    if (!token.value || Date.now() - lastRefresh < minMs) return Promise.resolve()
+    return refreshMe()
   }
 
   async function login(router: Router) {
@@ -261,8 +281,12 @@ export const useAuthStore = defineStore('auth', () => {
     scope,
     initials,
     hasModule,
+    hasFeature,
+    hasAnyFeature,
+    canChat,
     wireApi,
     refreshMe,
+    refreshMeThrottled,
     login,
     logout,
     fillDemo,

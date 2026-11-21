@@ -62,6 +62,7 @@ BLOCKED = {
     # tabelas privadas
     "users": "SELECT password_hash FROM users",
     "app_secret": "SELECT key FROM app_secret",
+    "role_features": "SELECT feature FROM role_features",
     "users_join": "SELECT s.name FROM stores s JOIN users u ON u.store_id = s.id",
     "hmac": "SELECT hmac('a', 'b', 'sha256')",
     # lixo

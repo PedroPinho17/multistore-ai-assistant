@@ -90,6 +90,12 @@ def test_llm_role_cannot_read_the_request_log():
         run_query("SELECT question FROM request_log", {"role": "imperador", "brand_id": None, "store_id": None})
 
 
+def test_llm_role_cannot_read_role_features():
+    """O GRANT real vem de R__readonly.sql (a tabela está na lista privada)."""
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        run_query("SELECT feature FROM role_features", {"role": "imperador", "brand_id": None, "store_id": None})
+
+
 # ---------- contas ----------
 
 def test_brand_manager_creates_a_store_account_that_can_log_in(maia):

@@ -71,6 +71,11 @@ def legacy_app_redirect_path(path: str) -> str | None:
 async def lifespan(_app: FastAPI):
     """Arranque: regista o classificador ativo. Fim: fecha os pools de ligações."""
     log.info("Classificador de intenção: %s", INTENT_NAMES[intent_backend()])
+    try:
+        from multistore_ai_assistant.api.features import load_from_db
+        load_from_db()
+    except Exception:
+        log.warning("Funcionalidades por perfil: a usar as predefinições", exc_info=True)
     yield
     close_pools()
 

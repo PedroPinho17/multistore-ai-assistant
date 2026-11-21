@@ -10,6 +10,7 @@ Os limites de datas são ``timestamp`` (``localtimestamp``), como a coluna
 que com RLS dão planos lentos (ver ``sql_validator.TIMESTAMP_COLUMNS``).
 """
 from multistore_ai_assistant.api.errors import ApiError
+from multistore_ai_assistant.api.features import has_feature
 from multistore_ai_assistant.api.permissions import has_module
 from multistore_ai_assistant.db.query import run_query
 from multistore_ai_assistant.forecast.service import forecast_answer
@@ -128,9 +129,9 @@ def dashboard_for(user: dict) -> dict:
         ApiError 403 (``no_module``): a conta não tem nenhum dos dois módulos.
     """
     out: dict = {}
-    if has_module(user, "sql"):
+    if has_module(user, "sql") and has_feature(user, "chat"):
         out.update(_sales_sections(user))
-    if has_module(user, "forecast"):
+    if has_module(user, "forecast") and has_feature(user, "forecast"):
         fc_cols, fc_rows = forecast_answer(user, days=7)
         out["forecast_7d"] = {"columns": fc_cols, "rows": [list(r) for r in fc_rows]}
     if not out:

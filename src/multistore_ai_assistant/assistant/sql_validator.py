@@ -13,7 +13,7 @@ FORBIDDEN = (
     exp.Into, exp.Lock, exp.Merge, exp.Alter, exp.TruncateTable,
 )
 BLOCKED_PREFIXES = ("pg_", "information_schema")
-BLOCKED_TABLES = {"users", "app_secret"}
+BLOCKED_TABLES = {"users", "app_secret", "role_features"}
 
 # Funções que mudam o contexto da sessão, executam SQL dentro de uma string,
 # leem ficheiros ou falam com outros servidores.

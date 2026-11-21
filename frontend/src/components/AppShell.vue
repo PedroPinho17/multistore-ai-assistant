@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LangPicker from '@/components/LangPicker.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { sessionStore } from '@/lib/storage'
+import { redirectIfFeatureRemoved } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -54,6 +56,13 @@ function syncMobile() {
   isMobile.value = !!mobileMq?.matches
 }
 
+// Permission changes reach the menu without a new login (throttled in the store)
+async function onFocus() {
+  await auth.refreshMeThrottled()
+  if (!sessionStore.get('token')) return
+  await redirectIfFeatureRemoved(route, to => router.replace(to))
+}
+
 function onDocClick() {
   ui.userMenu = false
 }
@@ -92,12 +101,14 @@ onMounted(() => {
   mobileMq.addEventListener('change', syncMobile)
   document.addEventListener('click', onDocClick)
   document.addEventListener('keydown', onEsc)
+  window.addEventListener('focus', onFocus)
   void review.loadCount()
 })
 onUnmounted(() => {
   mobileMq?.removeEventListener('change', syncMobile)
   document.removeEventListener('click', onDocClick)
   document.removeEventListener('keydown', onEsc)
+  window.removeEventListener('focus', onFocus)
 })
 </script>
 
@@ -127,6 +138,7 @@ onUnmounted(() => {
       </div>
       <nav class="rail-nav" :aria-label="t.nav.main">
         <RouterLink
+          v-if="auth.canChat"
           to="/chat"
           class="nav-item"
           active-class="active"
@@ -137,7 +149,7 @@ onUnmounted(() => {
           <span>{{ t.nav.chat }}</span>
         </RouterLink>
         <RouterLink
-          v-if="auth.hasModule('sql') || auth.hasModule('forecast')"
+          v-if="auth.hasFeature('dashboard') && (auth.hasModule('sql') || auth.hasModule('forecast'))"
           to="/dashboard"
           class="nav-item"
           active-class="active"
@@ -148,7 +160,7 @@ onUnmounted(() => {
           <span>{{ t.nav.dashboard }}</span>
         </RouterLink>
         <RouterLink
-          v-if="auth.hasModule('users')"
+          v-if="auth.hasFeature('users') && auth.hasModule('users')"
           to="/users"
           class="nav-item"
           active-class="active"
@@ -159,7 +171,7 @@ onUnmounted(() => {
           <span>{{ t.nav.users }}</span>
         </RouterLink>
         <RouterLink
-          v-if="auth.hasModule('teach')"
+          v-if="auth.hasFeature('review') && auth.hasModule('teach')"
           to="/review"
           class="nav-item"
           active-class="active"
@@ -176,7 +188,7 @@ onUnmounted(() => {
           >
         </RouterLink>
         <RouterLink
-          v-if="auth.hasModule('observability')"
+          v-if="auth.hasFeature('admin') && auth.hasModule('observability')"
           to="/admin"
           class="nav-item"
           active-class="active"

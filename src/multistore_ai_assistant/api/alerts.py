@@ -22,6 +22,7 @@ import threading
 import time
 from datetime import timedelta
 
+from multistore_ai_assistant.api.features import has_feature
 from multistore_ai_assistant.api.permissions import data_role, has_module
 from multistore_ai_assistant.data.signals import weather
 from multistore_ai_assistant.db.query import run_query
@@ -165,7 +166,8 @@ def stock_alerts(user: dict) -> list[dict]:
 def alerts_for(user: dict, lang: str = "pt") -> list[dict]:
     """Alertas do âmbito do utilizador (mais graves primeiro), com o texto no idioma pedido."""
     key = (data_role(user["role"]), user.get("brand_id"), user.get("store_id"),
-           has_module(user, "sql"), has_module(user, "orders"))
+           has_module(user, "sql") and has_feature(user, "chat"),
+           has_module(user, "orders") and has_feature(user, "orders"))
     now = time.monotonic()
     with _lock:
         cached = _cache.get(key)
@@ -174,9 +176,9 @@ def alerts_for(user: dict, lang: str = "pt") -> list[dict]:
     else:
         items = []
         try:
-            if has_module(user, "sql"):
+            if has_module(user, "sql") and has_feature(user, "chat"):
                 items += sales_alerts(user)
-            if has_module(user, "orders"):
+            if has_module(user, "orders") and has_feature(user, "orders"):
                 items += stock_alerts(user)
         except Exception:
             log.warning("Não foi possível calcular os alertas", exc_info=True)

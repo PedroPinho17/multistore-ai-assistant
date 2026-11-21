@@ -29,8 +29,16 @@ from multistore_ai_assistant.api.conversations import (
     result_payload,
     sql_of_request,
 )
-from multistore_ai_assistant.api.deps import ask_limiter, conversation_user, explain_limiter, require_module
+from multistore_ai_assistant.api.deps import (
+    ask_limiter,
+    conv_limiter,
+    explain_limiter,
+    require_any_feature,
+    require_feature,
+    require_module,
+)
 from multistore_ai_assistant.api.errors import ApiError, request_lang, tr
+from multistore_ai_assistant.api.features import CHAT_FEATURES, has_any_feature, has_feature
 from multistore_ai_assistant.api.json_safe import jsonable
 from multistore_ai_assistant.api.permissions import data_role, has_module
 from multistore_ai_assistant.api.request_log import rate, save_request
@@ -62,6 +70,8 @@ class StreamCancelled(Exception):
 
 
 def _check_conversation(body: AskIn, user: dict) -> None:
+    if not has_any_feature(user, CHAT_FEATURES):
+        raise ApiError("no_feature", 403, feature="chat")
     ask_limiter.check(user["username"])
     if body.conversation_id is not None and not owns(user["username"], body.conversation_id):
         raise ApiError("conv_not_found", 404)
@@ -191,7 +201,8 @@ def ask_stream(body: AskIn, request: Request, user: dict = Depends(current_user)
 
 
 @router.post("/explain")
-def explain(body: ExplainIn, user: dict = Depends(require_module("sql", explain_limiter))):
+def explain(body: ExplainIn, user: dict = Depends(require_module("sql", explain_limiter)),
+           _feature: dict = Depends(require_feature("chat"))):
     """Explica em linguagem simples o SQL de uma resposta da própria conta."""
     sql = sql_of_request(user["username"], body.request_id)
     if sql is None:
@@ -204,13 +215,14 @@ def explain(body: ExplainIn, user: dict = Depends(require_module("sql", explain_
 
 
 @router.get("/alerts")
-def alerts(request: Request, user: dict = Depends(conversation_user)):
+def alerts(request: Request,
+           user: dict = Depends(require_any_feature("chat", "orders", limiter=conv_limiter))):
     """Alertas do âmbito do utilizador (quedas de vendas, stock a acabar)."""
     return {"alerts": alerts_for(user, request_lang(request))}
 
 
 @router.post("/ratings")
-def rating(body: RatingIn, user: dict = Depends(conversation_user)):
+def rating(body: RatingIn, user: dict = Depends(require_any_feature(*CHAT_FEATURES, limiter=conv_limiter))):
     """👍 / 👎 numa resposta da própria conta (alimenta o painel de observabilidade)."""
     if not rate(user, body.request_id, body.rating):
         raise ApiError("answer_not_found", 404)
@@ -221,6 +233,8 @@ def rating(body: RatingIn, user: dict = Depends(conversation_user)):
 def feedback(body: FeedbackIn, user: dict = Depends(current_user)):
     """Valida SQL e adiciona o par pergunta→SQL ao RAG (módulo ``teach``)."""
     # Os exemplos servem a todas as contas: só quem tem o módulo os pode ensinar
+    if not has_feature(user, "review"):
+        raise ApiError("no_feature", 403, feature="review")
     if not has_module(user, "teach"):
         raise ApiError("cannot_teach", 403)
     add_example(body.question, teachable_sql(body.sql, user), source="feedback", created_by=user["username"])

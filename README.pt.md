@@ -75,6 +75,7 @@ Decisões de desenho (porquê Groq e não um modelo local, porquê XLM-R, porqu�
 | **Role só de leitura** | Só `SELECT`, transações só de leitura, limite de 10 s, sem acesso às tabelas privadas e `REVOKE` por coluna nos dados pessoais. |
 | **Validador de SQL** | Uma só consulta; sem DML/DDL, catálogos de sistema nem funções que alterem a sessão, leiam ficheiros ou abram ligações. As comparações com datas são reescritas para os planos continuarem rápidos sob RLS. |
 | **API** | Limites de pedidos, verificação de dono, login em tempo constante, JWT com claims obrigatórias, erros genéricos, `/docs` desligado por defeito. A recuperação de password usa tokens de uso único, válidos 30 minutos e guardados em SHA-256, e nunca revela que emails existem. |
+| **Funcionalidades por perfil** | Chat, previsão, encomendas, painel, rentabilidade/revisão, contas e admin são dadas por perfil (`role_features`). Só o perfil admin as edita, na página de administração, e só ele pode ter a funcionalidade admin. Sem a funcionalidade, a página esconde-se e a API responde 403. O chat abre com chat, previsão ou encomendas, e cada pergunta é verificada outra vez: uma pergunta de dados, previsão ou encomendas que o perfil não pode fazer é recusada em PT/EN/ES/FR, sem dados. |
 | **Browser** | CSP estrita (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, sem referrer, token da sessão em `sessionStorage`, proteção contra injeção de fórmulas no CSV. |
 | **Infraestrutura** | Nenhum segredo no código; a porta da base de dados só está ligada a `127.0.0.1`. |
 

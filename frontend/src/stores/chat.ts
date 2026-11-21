@@ -81,7 +81,11 @@ export const useChatStore = defineStore('chat', () => {
     const auth = useAuthStore()
     const ui = useUiStore()
     return (ui.t.starters[auth.scope] || [])
-      .filter((pair): pair is [string, string] => !!pair[0] && auth.hasModule(pair[0]))
+      .filter((pair): pair is [string, string] => {
+        if (!pair[0] || !auth.hasModule(pair[0])) return false
+        const feature = pair[0] === 'sql' ? 'chat' : pair[0]
+        return auth.hasFeature(feature)
+      })
       .map(([, q]) => q)
   })
 
@@ -211,8 +215,8 @@ export const useChatStore = defineStore('chat', () => {
       text: ui.t.welcome(
         name,
         auth.scope,
-        auth.hasModule('forecast'),
-        auth.hasModule('orders'),
+        auth.hasModule('forecast') && auth.hasFeature('forecast'),
+        auth.hasModule('orders') && auth.hasFeature('orders'),
       ),
       welcome: true,
     })

@@ -95,7 +95,7 @@ watch(() => props.m.done, maybeDraw)
               {{ m.copied ? ui.t.copied : ui.t.copy }}
             </button>
             <button
-              v-if="m.sql && auth.hasModule('teach') && !m.liked"
+              v-if="m.sql && auth.hasFeature('review') && auth.hasModule('teach') && !m.liked"
               type="button"
               @click="chat.like(m)"
             >
@@ -155,7 +155,7 @@ watch(() => props.m.done, maybeDraw)
                 </button>
               </div>
               <pre>{{ m.sql }}</pre>
-              <div class="explain" v-if="m.requestId && auth.hasModule('sql')">
+              <div class="explain" v-if="m.requestId && auth.hasFeature('chat') && auth.hasModule('sql')">
                 <p v-if="m.explanation" class="explain-text">
                   <svg class="i" aria-hidden="true"><use href="#i-sparkles" /></svg>
                   {{ m.explanation }}

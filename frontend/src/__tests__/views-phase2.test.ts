@@ -554,11 +554,21 @@ describe('role guards', () => {
     ['/review', 'teach'],
   ])('%s without the %s module goes to the chat', async (path, module) => {
     serve({})
-    login({ username: 'gerente.maia', role: 'loja', modules: ['sql'] })
+    login({
+      username: 'gerente.maia',
+      role: 'loja',
+      modules: ['sql'],
+      features: ['chat', 'review', 'users', 'admin'],
+    })
     await realRouter.push(path)
     expect(realRouter.currentRoute.value.name).toBe('chat')
 
-    login({ username: 'gestor', role: 'marca', modules: ['sql', module] })
+    login({
+      username: 'gestor',
+      role: 'marca',
+      modules: ['sql', module],
+      features: ['chat', 'dashboard', 'review', 'users', 'admin'],
+    })
     await realRouter.push(path)
     expect(realRouter.currentRoute.value.path).toBe(path)
   })

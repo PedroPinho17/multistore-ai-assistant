@@ -3,6 +3,7 @@ from fastapi import Depends, Request
 
 from multistore_ai_assistant.api.auth import current_user
 from multistore_ai_assistant.api.errors import ApiError
+from multistore_ai_assistant.api.features import has_feature
 from multistore_ai_assistant.api.permissions import has_module
 from multistore_ai_assistant.api.ratelimit import RateLimiter
 
@@ -39,6 +40,28 @@ def require_module(module: str, limiter: RateLimiter):
         if not has_module(user, module):
             raise ApiError("no_module", 403, module=module)
         limiter.check(user["username"])
+        return user
+    return dependency
+
+
+def require_feature(feature: str, limiter: RateLimiter | None = None):
+    """Dependência: o perfil do utilizador tem a funcionalidade (403 ``no_feature``)."""
+    def dependency(user: dict = Depends(current_user)) -> dict:
+        if not has_feature(user, feature):
+            raise ApiError("no_feature", 403, feature=feature)
+        if limiter is not None:
+            limiter.check(user["username"])
+        return user
+    return dependency
+
+
+def require_any_feature(*features: str, limiter: RateLimiter | None = None):
+    """Dependência: o perfil tem pelo menos uma das funcionalidades."""
+    def dependency(user: dict = Depends(current_user)) -> dict:
+        if not any(has_feature(user, feature) for feature in features):
+            raise ApiError("no_feature", 403, feature=features[0] if features else "")
+        if limiter is not None:
+            limiter.check(user["username"])
         return user
     return dependency
 

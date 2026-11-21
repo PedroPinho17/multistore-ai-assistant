@@ -112,6 +112,17 @@ class UserSettingsIn(BaseModel):
     accent: str | None = Field(default=None, pattern=ACCENT_PATTERN)
 
 
+FeatureName = Literal["chat", "forecast", "orders", "dashboard", "review", "users", "admin"]
+RoleName = Literal["admin", "imperador", "marca", "loja"]
+
+
+class RoleFeaturesIn(BaseModel):
+    """Corpo do PUT /admin/features: funcionalidades de um perfil."""
+    model_config = {"extra": "forbid"}
+    role: RoleName
+    features: list[FeatureName] = Field(max_length=7)
+
+
 class AppSettingsIn(BaseModel):
     """Corpo do PUT /settings/app (só admin)."""
     model_config = {"extra": "forbid"}

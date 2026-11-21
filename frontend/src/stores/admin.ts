@@ -5,6 +5,7 @@ import type { AdminMetrics } from '@/api/types'
 import { ApiError } from '@/api/types'
 import { destroyAdminCharts, drawAdminCharts } from '@/lib/admin-charts'
 import { DASH_DAYS, formatValue, ms, pct } from '@/lib/format'
+import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { LOCALES } from '@/i18n/types'
 
@@ -13,6 +14,9 @@ export const useAdminStore = defineStore('admin', () => {
   const days = ref<(typeof DASH_DAYS)[number]>(7)
   const loading = ref(false)
   const error = ref('')
+  const roleFeatures = ref<Record<string, string[]> | null>(null)
+  const featureNames = ref<string[]>([])
+  const savingRole = ref('')
   const updatedAt = ref<number | null>(null)
   // Formatted in the chosen language (and re-formatted when it changes)
   const updated = computed(() => {
@@ -125,6 +129,55 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  async function loadFeatures() {
+    const ui = useUiStore()
+    try {
+      const data = await api<{ features: string[]; roles: Record<string, string[]> }>(
+        '/admin/features',
+      )
+      featureNames.value = data.features
+      roleFeatures.value = data.roles
+    } catch (e) {
+      const err = e as ApiError
+      error.value =
+        (err.code && (ui.t.errors as Record<string, string>)[err.code]) || err.message
+    }
+  }
+
+  function toggleFeature(role: string, feature: string) {
+    const current = roleFeatures.value?.[role]
+    if (!current) return
+    roleFeatures.value = {
+      ...roleFeatures.value,
+      [role]: current.includes(feature)
+        ? current.filter(f => f !== feature)
+        : [...current, feature],
+    }
+  }
+
+  async function saveRole(role: string) {
+    const ui = useUiStore()
+    const features = roleFeatures.value?.[role]
+    if (!features) return
+    savingRole.value = role
+    try {
+      const saved = await api<{ role: string; features: string[] }>(
+        '/admin/features',
+        { role, features },
+        'PUT',
+      )
+      roleFeatures.value = { ...roleFeatures.value, [role]: saved.features }
+      ui.toast(ui.t.adm.permSaved, 'ok')
+      // The admin may have changed their own role: menus follow the new list
+      await useAuthStore().refreshMe()
+    } catch (e) {
+      const err = e as ApiError
+      ui.toast((err.code && (ui.t.errors as Record<string, string>)[err.code]) || err.message, 'error')
+    } finally {
+      savingRole.value = ''
+    }
+  }
+
   function reset() {
     requestSeq++
     loading.value = false
@@ -157,10 +210,16 @@ export const useAdminStore = defineStore('admin', () => {
     loading,
     error,
     updated,
+    roleFeatures,
+    featureNames,
+    savingRole,
     dashDays,
     admKpis,
     intentRows,
     load,
+    loadFeatures,
+    toggleFeature,
+    saveRole,
     reset,
     dailyLabel,
     evalLabel,

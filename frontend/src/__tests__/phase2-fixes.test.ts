@@ -53,7 +53,12 @@ const ok = (body: unknown) => ({
 function loginAs(username: string, modules: string[]) {
   const auth = useAuthStore()
   auth.token = 'tok'
-  auth.user = { username, role: 'loja', modules }
+  auth.user = {
+    username,
+    role: 'loja',
+    modules,
+    features: ['chat', 'forecast', 'orders', 'dashboard', 'review'],
+  }
   sessionStore.set('token', 'tok')
   auth.wireApi()
 }

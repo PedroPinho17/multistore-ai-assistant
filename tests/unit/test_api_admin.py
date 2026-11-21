@@ -37,7 +37,8 @@ def store(monkeypatch):
 def test_me_returns_modules_without_the_internal_id():
     r = client.get("/me", headers=bearer(MARCA))
     assert r.status_code == 200
-    assert r.json() == {**{k: MARCA[k] for k in ("username", "role", "brand_id", "store_id", "modules")}, "demo": False,
+    assert r.json() == {**{k: MARCA[k] for k in ("username", "role", "brand_id", "store_id", "modules")},
+                        "features": ["chat", "forecast", "orders", "dashboard", "users"], "demo": False,
                         "avatar_url": None, "brand_name": None,
                         "settings": {"lang": None, "theme": None, "accent": None}}
 

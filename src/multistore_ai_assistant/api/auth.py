@@ -23,6 +23,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from multistore_ai_assistant.api import settings as app_settings
 from multistore_ai_assistant.api.errors import ApiError
+from multistore_ai_assistant.api.features import user_features
 from multistore_ai_assistant.api.permissions import ROLES, effective_modules, is_demo
 from multistore_ai_assistant.db.pool import connection
 
@@ -97,7 +98,7 @@ def load_user(username: str) -> dict | None:
 def public_user(user: dict) -> dict:
     """O que a UI recebe sobre a conta (sem o id interno)."""
     return {**{k: user[k] for k in ("username", "role", "brand_id", "store_id", "modules")},
-            "demo": is_demo(user)}
+            "features": user_features(user), "demo": is_demo(user)}
 
 
 def session_hours() -> int:

@@ -125,7 +125,8 @@ def test_readonly_sql_alone_keeps_private_data_closed():
         assert c.execute("SELECT count(*) FROM pg_default_acl").fetchone()[0] == 0
         has_setup = c.execute("SELECT to_regclass('public.setup_steps') IS NOT NULL").fetchone()[0]
     private = ["SELECT key FROM app_secret", "SELECT password_hash FROM users",
-               "SELECT nif FROM employees", "SELECT * FROM conversations"]
+               "SELECT nif FROM employees", "SELECT * FROM conversations",
+               "SELECT feature FROM role_features"]
     if has_setup:                      # criada pelo entrypoint do Docker
         private.append("SELECT * FROM setup_steps")
     for sql in private:

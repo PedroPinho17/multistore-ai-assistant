@@ -27,6 +27,7 @@ watch(
 
 onMounted(() => {
   void adm.load()
+  void adm.loadFeatures()
 })
 onUnmounted(() => adm.reset())
 </script>
@@ -36,6 +37,52 @@ onUnmounted(() => adm.reset())
     <div class="page-scroll">
       <main class="page wide">
         <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+        <section v-if="adm.roleFeatures" class="card">
+          <h2 class="sec">{{ t.adm.permTitle }}</h2>
+          <p class="sec-sub">{{ t.adm.permSub }}</p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>{{ t.um.role }}</th>
+                  <th v-for="f in adm.featureNames" :key="f">
+                    {{ t.adm.featureNames[f as keyof typeof t.adm.featureNames] }}
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(feats, role) in adm.roleFeatures" :key="role">
+                  <td>{{ t.roles[role as keyof typeof t.roles] || role }}</td>
+                  <td v-for="f in adm.featureNames" :key="role + f">
+                    <input
+                      type="checkbox"
+                      :checked="feats.includes(f)"
+                      :disabled="f === 'admin'"
+                      :aria-label="
+                        (t.roles[role as keyof typeof t.roles] || role) +
+                        ' ' +
+                        t.adm.featureNames[f as keyof typeof t.adm.featureNames]
+                      "
+                      @change="adm.toggleFeature(role, f)"
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      :disabled="adm.savingRole === role"
+                      @click="adm.saveRole(role)"
+                    >
+                      {{ t.adm.permSave }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="kpis" :aria-label="t.adm.title">
           <template v-if="data">

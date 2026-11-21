@@ -64,7 +64,7 @@ export const useReviewStore = defineStore('review', () => {
   function loadCount(force = false): Promise<void> {
     const auth = useAuthStore()
     const who = auth.user?.username ?? null
-    if (!who || !auth.hasModule('teach')) {
+    if (!who || !auth.hasFeature('review') || !auth.hasModule('teach')) {
       pending.value = 0
       countFor = null
       return Promise.resolve()

@@ -185,6 +185,14 @@ A `Trace` lives in a `ContextVar` for the duration of a request. The LLM wrapper
 
 ## 4. Security summary
 
+### Features by role
+
+Row Level Security still decides which stores a query can see, and each account still has modules (`sql`, `forecast`, `orders`, `teach`, `users`, `observability`). On top of that, `role_features` says which product areas a role may open: chat (SQL answers), forecast, orders, dashboard, review (profitability and the teach queue), users (account management, together with the `users` module) and admin. Defaults match what those roles could already do. The admin feature belongs only to the admin role (a CHECK constraint and the API both enforce it), and only the admin role, with that feature, can read or edit the matrix (`/admin/features`). `GET /me` returns the list. API routes depend on `require_feature` and answer 403.
+
+The chat page and conversations (list, view, PDF) open with any of chat, forecast or orders; each question is then checked by feature. Without chat, a question the classifier is sure is about data is refused before the SQL cache and before the LLM; if the classifier is unsure, the LLM may still label it forecast/orders, and any SQL it writes is refused without running. A forecast or orders question without that feature is refused without calling the model. Refusals are in Portuguese, English, Spanish or French and carry no rows.
+
+Each API process keeps an in-memory copy of `role_features`: a `PUT` updates the process that received it at once, and every process re-reads the table at most 60 seconds later (an empty table falls back to the defaults, with a warning). The JWT carries no features, so nothing waits for a new login. The Vue shell hides the matching menu entries, reloads `/me` after the admin saves and on window focus (at most once a minute), and the router sends the user to `/chat` (or home, if the chat is closed too) with a toast. A session saved without a feature list opens nothing extra until `/me` answers.
+
 | Threat | Mitigation |
 |---|---|
 | Prompt injection → destructive SQL | AST validator (single SELECT, blocked functions/tables), read-only role, `default_transaction_read_only`, 10 s statement timeout |
@@ -192,6 +200,7 @@ A `Trace` lives in a `ContextVar` for the duration of a request. The LLM wrapper
 | Personal data (GDPR) | Column-level grants: the LLM role never sees NIF/NISS/address. The classifier refuses before the LLM |
 | Credential stuffing / brute force | bcrypt, constant-time login (dummy hash), per-IP and per-user rate limits |
 | Stolen or stale tokens | 8 h expiry; profile re-read on every request, so a disabled account loses access at once |
+| A role using a feature it should not | `role_features` (chat, forecast, orders, dashboard, review, users, admin). Routes use `require_feature`; `ask()` refuses data, forecast and orders questions in the user's language (before the SQL cache) instead of returning rows. Only the admin role edits the matrix and holds the admin feature |
 | XSS / clickjacking | Vue text interpolation only (no `v-html`), CSP, `X-Frame-Options: DENY`, pinned CDN scripts with SRI |
 | CSV injection | Cells starting with `= + - @` are prefixed when exporting |
 | Account takeover via password reset | Hashed, single-use, 30-minute tokens in the URL fragment; same answer for unknown emails; rate limits per IP and per email; no reset for demo accounts |

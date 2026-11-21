@@ -8,6 +8,7 @@ export interface User {
   username: string
   role: Role
   modules?: string[]
+  features?: string[]
   avatar_url?: string | null
   demo?: boolean
   brand_name?: string | null
